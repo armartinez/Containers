@@ -30,6 +30,12 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
+      - name: Check formatting
+        run: |
+          swift format --recursive --configuration .swift-format -i $(find . -type f -name '*.swift' -not -path "*/.*")
+          git diff
+          if ! git diff --quiet ; then echo the following files require formatting: ; git diff --name-only ; false ; fi
+
       - name: Resolve packages
         run: |
           xcodebuild -resolvePackageDependencies \
