@@ -59,3 +59,35 @@ The Containers app also runs in your menu bar, showing the current system status
 This is a community-led effort, so we welcome as many contributors who can help. Read the [Contribution Guide](https://github.com/try-containers/Containers/blob/main/CONTRIBUTING.md) for more information.
 
 <a href="https://www.buymeacoffee.com/armartinez" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-blue.png" alt="Buy Me A Coffee" height="41" width="174"></a>
+
+## License
+
+**Containers is free, and will always be free.**
+
+### The app
+
+Download it from the Mac App Store and use it however you like — personally, at
+work, or across your company. The released app is licensed to you under Apple's
+standard end user terms, and costs nothing.
+
+### The source code
+
+The code in this repository is licensed
+under the [PolyForm Noncommercial License 1.0.0](LICENSE.md):
+
+- ✅ Read it, build it, and modify it
+- ✅ Fork it and contribute changes back
+- ✅ Use it for personal projects, study, and research
+- ✅ Use it at nonprofits, schools, and government institutions
+- ❌ Use it, or any part of it, for commercial purposes
+- ❌ Sell it, or sell anything built from it
+
+The intent is simple: development tools should be free. You should never have to
+pay for this, and neither should anyone else — so nobody gets to take this work,
+in whole or in part, and sell it.
+
+Donations are welcome and unaffected by the license. If you need a commercial
+license, open an issue.
+
+> Releases published before this change were licensed under the Mozilla Public
+> License 2.0 and remain available under those terms.

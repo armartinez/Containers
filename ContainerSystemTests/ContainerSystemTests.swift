@@ -5,67 +5,65 @@
 //  Created by Axel Martinez on 2026/02/08.
 //
 
-import Testing
 import Foundation
+import Testing
 
 @testable import ContainerSystem
 
-@Suite(.serialized)
+@Suite("Container system", .serialized)
 struct ContainerSystemTests {
-    
-    @Test("System starts successfully")
+
+    @Test("Start system")
     @MainActor
-    func testSystemStart() async throws {
+    func startSystem() async throws {
         let testRuntime = MockContainerRuntime()
         let system = SystemManager(testRuntime: testRuntime)
-        
+
         let appRoot = FileManager.default.temporaryDirectory
             .appendingPathComponent("test-containers-\(UUID().uuidString)")
-        
+
         try await system.start(appRoot: appRoot)
-        
-        #expect(system.isRunning == true)
-        #expect(system.systemStatus == .running)
-        
+
+        #expect(system.status == .running)
+
         try await system.stop()
     }
-    
-    @Test("System can be started multiple times")
+
+    @Test("Start twice")
     @MainActor
-    func testSystemMultipleStarts() async throws {
+    func startTwice() async throws {
         let testRuntime = MockContainerRuntime()
         let system = SystemManager(testRuntime: testRuntime)
-        
+
         let appRoot = FileManager.default.temporaryDirectory
             .appendingPathComponent("test-containers-\(UUID().uuidString)")
-        
+
         try await system.start(appRoot: appRoot)
-        #expect(system.isRunning == true)
-        
+        #expect(system.status == .running)
+
         // Starting again should not cause error
         try await system.start(appRoot: appRoot)
-        #expect(system.isRunning == true)
-        
+        #expect(system.status == .running)
+
         try await system.stop()
     }
-    
-    @Test("System stops successfully")
+
+    @Test("Stop system")
     @MainActor
-    func testSystemStop() async throws {
+    func stopSystem() async throws {
         let testRuntime = MockContainerRuntime()
         let system = SystemManager(testRuntime: testRuntime)
-        
+
         // Ensure system is started
         let appRoot = FileManager.default.temporaryDirectory
             .appendingPathComponent("test-containers-\(UUID().uuidString)")
-        
+
         try await system.start(appRoot: appRoot)
-        #expect(system.isRunning == true)
-        
+        #expect(system.status == .running)
+
         // Stop the system
         try await system.stop()
-        
-        #expect(system.isRunning == false)
-        #expect(system.systemStatus == .notStarted)
+
+        #expect(system.status == .notStarted)
     }
 }

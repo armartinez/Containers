@@ -17,12 +17,14 @@
   },
   "groups" : [
     {
+      "blur-material" : null,
       "hidden" : false,
       "layers" : [
         {
           "glass" : true,
-          "image-name" : "Layer.png",
-          "name" : "Layer",
+          "hidden" : false,
+          "image-name" : "server-stack-new.png",
+          "name" : "server-stack-new",
           "position" : {
             "scale" : 1,
             "translation-in-points" : [
@@ -32,6 +34,7 @@
           }
         }
       ],
+      "lighting" : "individual",
       "shadow" : {
         "kind" : "neutral",
         "opacity" : 0.5

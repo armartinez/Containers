@@ -1,5 +1,27 @@
 # Contribute to Containers
 
+## Licensing of Contributions
+
+The source code of Containers is released under the
+[PolyForm Noncommercial License 1.0.0](LICENSE.md), and the app is distributed
+on the Mac App Store, which requires Apple's own end-user license terms for the
+shipped binary.
+
+By submitting a pull request or otherwise contributing to this project, you
+agree that:
+
+1. You are the author of your contribution, or you otherwise have the right to
+   submit it under these terms.
+2. You grant Axel Martinez a perpetual, worldwide, irrevocable, royalty-free
+   license to use, reproduce, modify, and distribute your contribution as part
+   of Containers — both under the project license and under the license terms
+   required by app store distribution channels, including Apple's Licensed
+   Application End User License Agreement.
+3. You retain copyright in your contribution.
+
+This exists solely so the project can ship through the App Store without a
+licensing conflict. It does not transfer ownership of your work.
+
 ## Explore Issues
 
 Find issues from the [Issues tab](https://github.com/try-containers/Containers/issues). If you find an issue you want to work on, please indicate it in the issue and/or attach a draft PR once available. An admin or maintainer will then assign the Issue and/or PR to you.
@@ -7,6 +29,10 @@ Find issues from the [Issues tab](https://github.com/try-containers/Containers/i
 > [!IMPORTANT]
 > Please make sure to first comment under an issue or ask a maintainer to assign you to the issue before working on it. This helps prevent multiple people from working on the same
 > thing, which could result in your work not being merged. Additionally, some issues might be reserved for those with more in-depth knowledge of the codebase.
+
+## Signing
+
+Copy `Configuration/Local.xcconfig.example` to `Configuration/Local.xcconfig` and set your own `DEVELOPMENT_TEAM`. The file is ignored by git, so set the team there rather than in Xcode's Signing & Capabilities tab, which writes it into the project file.
 
 ## Code Style
 

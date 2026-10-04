@@ -5,229 +5,158 @@
 //  Created by Axel Martinez on 2026/02/08.
 //
 
-import ContainerResource
 import ContainerSystem
+import Containerization
 import ContainerizationOCI
 import SwiftUI
-import Logging
+
+struct ContainerDetailWindow: View {
+    @Environment(ContainerManager.self) private var containerManager
+
+    let id: String
+
+    @SwiftUI.State private var snapshot: ContainerSnapshot?
+    @SwiftUI.State private var isLoading: Bool = true
+    @SwiftUI.State private var loadError: Error?
+    @SwiftUI.State private var toolbarController = DetailToolbarController()
+
+    var body: some View {
+        Group {
+            if let snapshot {
+                ContainerDetailView(
+                    container: ContainerItem(snapshot),
+                    initialSnapshot: snapshot,
+                    toolbarController: toolbarController
+                )
+            } else if isLoading {
+                // Empty until the detail arrives; the window grows into it.
+                Color.clear
+                    .frame(
+                        width: DetailPlaceholder.container.width,
+                        height: DetailPlaceholder.container.height
+                    )
+            } else {
+                ContentUnavailableView(
+                    "Container Not Found",
+                    systemImage: "shippingbox",
+                    description: Text(
+                        loadError?.localizedDescription
+                            ?? "The container '\(id)' no longer exists."
+                    )
+                )
+                .frame(width: 550, height: 320)
+            }
+        }
+        .background(
+            DetailToolbarAttacher(
+                controller: toolbarController,
+                tabs: ContainerDetailView.toolbarTabs,
+                items: ContainerDetailView.placeholderToolbarItems
+            )
+        )
+        .navigationTitle(id)
+        .task(id: id) {
+            await load()
+        }
+    }
+
+    private func load() async {
+        isLoading = true
+
+        defer { isLoading = false }
+
+        do {
+            snapshot = try await containerManager.get(id: id)
+            loadError = nil
+        } catch {
+            snapshot = nil
+            loadError = error
+        }
+    }
+}
 
 struct ContainerDetailView: View {
-    let onClose: () -> Void
-    
     @Environment(ContainerManager.self) private var containerManager
- 
-    @SwiftUI.State private var container: ContainerViewModel
-    @SwiftUI.State private var status: RuntimeStatus
-    @SwiftUI.State private var selectedCategory: DetailCategory = .inspect
-    @SwiftUI.State private var error: Error?
-    @SwiftUI.State private var showError: Bool = false
-    @SwiftUI.State private var showDeleteConfirmation: Bool = false
-    @SwiftUI.State private var isOperationInProgress: Bool = false
-    
-    enum DetailCategory: String, Identifiable {
+    @Environment(ActivityCenter.self) private var activityCenter
+    @Environment(ReportManager.self) private var reportManager
+    @Environment(\.dismissWindow) private var dismissWindow
+    @Environment(\.openURL) private var openURL
+
+    @SwiftUI.State private var container: ContainerItem
+    @SwiftUI.State private var snapshot: ContainerSnapshot?
+    @SwiftUI.State private var status: ContainerStatus
+    /// Opens on the logs, which is usually why the window was opened.
+    @SwiftUI.State private var selectedCategory: DetailCategory = .logs
+    @SwiftUI.State private var errorAlert: ErrorAlert?
+    @SwiftUI.State private var showDeleteConfirmation = false
+    @SwiftUI.State private var isLoadingSnapshot = false
+    @SwiftUI.State private var isOperationInProgress = false
+
+    enum DetailCategory: String, CaseIterable, Hashable {
         case logs
         case inspect
-        
-        var id: String {
-            return self.rawValue
-        }
-        
-        static let allCases: [DetailCategory] = [.inspect, .logs]
+        case info
     }
-    
+
+    let toolbarController: DetailToolbarController
+
     init(
-        container: ContainerViewModel,
-        onClose: @escaping () -> Void
+        container: ContainerItem,
+        initialSnapshot: ContainerSnapshot? = nil,
+        toolbarController: DetailToolbarController = DetailToolbarController()
     ) {
-        self.onClose = onClose
-        self._container = SwiftUI.State(initialValue: container)
-        self._status = SwiftUI.State(initialValue: container.status)
+        self.toolbarController = toolbarController
+
+        let initialContainer =
+            initialSnapshot.map(ContainerItem.init) ?? container
+
+        self._container = State(initialValue: initialContainer)
+        self._snapshot = State(initialValue: initialSnapshot)
+        self._status = State(initialValue: initialContainer.status)
     }
-    
+
     var body: some View {
-        VStack(spacing: 0) {
-            
-            // Header Section
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text(container.id)
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                            
-                            // Status badge
-                            HStack(spacing: 4) {
-                                Circle()
-                                    .fill(
-                                        status == .running
-                                        ? Color.green : Color.red
-                                    )
-                                    .frame(width: 8, height: 8)
-                                Text(status.rawValue.localizedCapitalized)
-                                    .font(.caption)
-                                    .fontWeight(.medium)
-                            }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(
-                                Capsule()
-                                    .fill(
-                                        (status == .running
-                                         ? Color.green : Color.red).opacity(
-                                            0.1
-                                         )
-                                    )
-                            )
-                        }
-                    }
-                    
-                    Spacer()
-                    
-                    // Action Buttons
-                    HStack(spacing: 8) {
-                        if isOperationInProgress {
-                            ProgressView()
-                                .controlSize(.small)
-                        } else {
-                            switch status {
-                            case .running:
-                                Button {
-                                    Task {
-                                        isOperationInProgress = true
-                                        do {
-                                            try await containerManager.stop(
-                                                snapshots: [container.snapshot],
-                                                timeoutSeconds: UserDefaults.stopContainerTimeoutSeconds
-                                            )
-                                            
-                                            self.error = nil
-                                        } catch (let error) {
-                                            self.error = error
-                                            self.showError = true
-                                        }
-                                        isOperationInProgress = false
-                                    }
-                                } label: {
-                                    Label("Stop", systemImage: "stop.fill")
-                                        .labelStyle(.iconOnly)
-                                }
-                                .buttonStyle(.bordered)
-                                .help("Stop container")
-                                
-                            case .stopped:
-                                Button {
-                                    Task {
-                                        isOperationInProgress = true
-                                        do {
-                                            try await containerManager.start(
-                                                id: container.snapshot.configuration.id,
-                                                attachStdout: false,
-                                                attachStdin: false
-                                            )
-                                            
-                                            self.error = nil
-                                        } catch (let error) {
-                                            self.error = error
-                                            self.showError = true
-                                        }
-                                        isOperationInProgress = false
-                                    }
-                                } label: {
-                                    Label("Start", systemImage: "play.fill")
-                                        .labelStyle(.iconOnly)
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .help("Start container")
-                                
-                            case .stopping:
-                                ProgressView()
-                                    .controlSize(.small)
-                                
-                            case .unknown:
-                                EmptyView()
-                            }
-                        }
-                        
-                        Button(role: .destructive) {
-                            showDeleteConfirmation = true
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                                .labelStyle(.iconOnly)
-                        }
-                        .buttonStyle(.bordered)
-                        .help("Delete container")
-                        .disabled(isOperationInProgress)
-                    }
-                }
-            }
-            .padding(20)
-            .background(Color(nsColor: .controlBackgroundColor))
-            
-            Divider()
-            
-            // Tab Picker
-            Picker(
-                selection: $selectedCategory,
-                content: {
-                    ForEach(DetailCategory.allCases) { category in
-                        Text(category.rawValue.localizedCapitalized)
-                            .tag(category)
-                    }
-                },
-                label: {}
-            )
-            .labelsHidden()
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            
-            Divider()
-            
-            // Content Section
-            Group {
-                switch self.selectedCategory {
-                case .logs:
-                    ContainerLogsView(containerID: container.id)
-                case .inspect:
-                    ContainerInspectView(container: container)
-                }
-            }
-            .frame(maxHeight: .infinity)
-            
-            // Bottom bar with close button
-            Divider()
-            
-            HStack {
-                Spacer()
-                
-                Button {
-                    onClose()
-                } label: {
-                    Text("Close")
-                        .frame(minWidth: 80)
-                }
-                .buttonStyle(.bordered)
-                .keyboardShortcut(.cancelAction)
-            }
-            .padding(16)
-            .background(Color(nsColor: .controlBackgroundColor))
-            
-        }
-        .alert(
-            "Error",
-            isPresented: $showError,
-            actions: {
-                Button("OK") {
-                    self.showError = false
+        DetailView(
+            selectedTab: $selectedCategory,
+            toolbarItems: toolbarItems,
+            tabTitle: { tab in
+                tab.rawValue.localizedCapitalized
+            },
+            tabIcon: { Self.tabIcon($0) },
+            tabMaxHeight: { tab in
+                switch tab {
+                case .info: nil
+                case .logs: 450
+                case .inspect: 450
                 }
             },
-            message: {
-                if let error = error {
-                    Text(error.localizedDescription)
+            tabContentWidth: { tab in
+                switch tab {
+                case .info: DetailPlaceholder.width
+                case .logs, .inspect: nil
+                }
+            },
+            toolbarController: toolbarController,
+            tabContent: { tab in
+                switch tab {
+                case .info:
+                    snapshotContent { snapshot in
+                        ContainerInfo(snapshot: snapshot)
+                    }
+                case .inspect:
+                    snapshotContent { snapshot in
+                        ContainerInspect(snapshot: snapshot)
+                    }
+                case .logs:
+                    ContainerLogs(containerID: container.id)
                 }
             }
         )
+        .task(id: container.id) {
+            guard snapshot == nil else { return }
+            await refreshSnapshot()
+        }
+        .errorAlert($errorAlert)
         .confirmationDialog(
             "Delete Container",
             isPresented: $showDeleteConfirmation,
@@ -237,18 +166,24 @@ struct ContainerDetailView: View {
                 Task {
                     do {
                         try await containerManager.delete(
-                            snapshots: [container.snapshot],
+                            ids: [container.id],
                             force: true
                         )
-                        
-                        self.error = nil
-                        onClose()
-                    } catch (let error) {
-                        self.error = error
-                        self.showError = true
+
+                        errorAlert = nil
+                        dismissWindow(
+                            id: ContainersApp.containerDetailWindowID,
+                            value: container.id
+                        )
+                    } catch {
+                        self.errorAlert = ErrorAlert(
+                            "The container couldn’t be deleted.",
+                            error: error
+                        )
                     }
                 }
             }
+
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(
@@ -257,39 +192,177 @@ struct ContainerDetailView: View {
         }
         .onChange(of: containerManager.lastContainerChange) {
             Task {
-                do {
-                    let containers = try await containerManager.list()
-                    
-                    if let updatedSnapshot = containers.first(where: { $0.configuration.id == container.id }) {
-                        let updatedContainer = ContainerViewModel(updatedSnapshot)
-                        
-                        if updatedContainer.status != status {
-                            status = updatedContainer.status
-                        }
-                        
-                        container = updatedContainer
-                    }
-                } catch {
-                    self.error = error
-                    self.showError = true
-                }
+                await refreshSnapshot()
             }
+        }
+    }
+
+    private func snapshotContent<Content: View>(
+        @ViewBuilder content: (ContainerSnapshot) -> Content
+    ) -> some View {
+        Group {
+            if let snapshot {
+                content(snapshot)
+            } else if isLoadingSnapshot {
+                // The window stays hidden until ready.
+                Color.clear
+            } else {
+                ContentUnavailableView(
+                    "Container Details Unavailable",
+                    systemImage: "shippingbox",
+                    description: Text(
+                        "The full container snapshot could not be loaded."
+                    )
+                )
+            }
+        }
+        // Outermost, or the window can't read it. A failed load still counts
+        // as ready, so the window sizes to the error.
+        .contentReady(!isLoadingSnapshot || snapshot != nil)
+    }
+
+    /// Always the same items in the same order, since the toolbar is built before the
+    /// snapshot arrives and changing the set would rebuild it visibly. Only titles,
+    /// actions and enabled states change.
+    private var toolbarItems: [DetailToolbarItem] {
+        let busy = isOperationInProgress || activityCenter.isWorking(on: container.id)
+        let isRunning = status == .running
+        let isStopped = status == .stopped
+
+        return [
+            .reports(
+                about: container.id,
+                ofKind: [.container],
+                manager: reportManager,
+                openURL: openURL
+            ),
+            DetailToolbarItem(
+                id: "run",
+                title: isRunning ? "Stop" : "Start",
+                icon: isRunning ? "stop.fill" : "play.fill",
+                help: isRunning ? "Stop container" : "Start container",
+                isEnabled: !busy && (isRunning || isStopped)
+            ) {
+                if isRunning {
+                    stopContainer()
+                } else {
+                    runContainer()
+                }
+            },
+            DetailToolbarItem(
+                id: "delete",
+                title: "Delete",
+                icon: "trash",
+                help: "Delete container",
+                isEnabled: !busy
+            ) {
+                showDeleteConfirmation = true
+            },
+        ]
+    }
+
+    /// The same items, inert, so the toolbar can be built before the container loads.
+    static var placeholderToolbarItems: [DetailToolbarItem] {
+        [
+            .reportsPlaceholder,
+            DetailToolbarItem(
+                id: "run",
+                title: "Start",
+                icon: "play.fill",
+                isEnabled: false
+            ) {},
+            DetailToolbarItem(
+                id: "delete",
+                title: "Delete",
+                icon: "trash",
+                isEnabled: false
+            ) {},
+        ]
+    }
+
+    static var toolbarTabs: [DetailToolbarController.Tab] {
+        DetailCategory.allCases.map {
+            .init(title: $0.rawValue.localizedCapitalized, icon: tabIcon($0))
+        }
+    }
+
+    static func tabIcon(_ tab: DetailCategory) -> String {
+        switch tab {
+        case .info: "info.circle"
+        case .logs: "list.bullet.rectangle"
+        case .inspect: "curlybraces"
+        }
+    }
+
+    private func refreshSnapshot() async {
+        isLoadingSnapshot = snapshot == nil
+        defer {
+            isLoadingSnapshot = false
+        }
+
+        do {
+            let updatedSnapshot = try await containerManager.get(
+                id: container.id
+            )
+            let updatedContainer = ContainerItem(updatedSnapshot)
+
+            snapshot = updatedSnapshot
+            container = updatedContainer
+            status = updatedContainer.status
+            errorAlert = nil
+        } catch {
+            self.errorAlert = ErrorAlert(
+                "The container couldn’t be refreshed.",
+                error: error
+            )
+        }
+    }
+
+    /// Runs through the activity center, so progress and failures show on the
+    /// container's dashboard row.
+    private func runContainer() {
+        let containerManager = containerManager
+        let id = container.id
+
+        activityCenter.run(
+            on: id,
+            kind: .container,
+            subtitle: container.imageName,
+            failureTitle: "The container couldn’t be started."
+        ) {
+            try await containerManager.run(id: id)
+        }
+    }
+
+    private func stopContainer() {
+        let containerManager = containerManager
+        let id = container.id
+        let timeout = UserDefaults.stopContainerTimeoutSeconds
+
+        activityCenter.run(
+            on: id,
+            kind: .container,
+            subtitle: container.imageName,
+            failureTitle: "The container couldn’t be stopped."
+        ) {
+            try await containerManager.stop(ids: [id], timeoutSeconds: timeout)
         }
     }
 }
 
 #Preview {
-    @Previewable @SwiftUI.State var containerManager = ContainerManager()
-    
+    let reportManager = ReportManager()
+
     ContainerDetailView(
-        container: ContainerViewModel(
+        container: ContainerItem(
             ContainerSnapshot(
                 configuration: ContainerConfiguration(
                     id: "preview-container",
                     image: ImageDescription(
                         reference: "nginx:latest",
                         descriptor: ContainerizationOCI.Descriptor(
-                            mediaType: "application/vnd.oci.image.manifest.v1+json",
+                            mediaType:
+                                "application/vnd.oci.image.manifest.v1+json",
                             digest: "sha256:1234567890abcdef",
                             size: 1024
                         )
@@ -306,9 +379,10 @@ struct ContainerDetailView: View {
                 networks: [],
                 startedDate: Date()
             )
-        ),
-        onClose: {}
+        )
     )
-    .environment(containerManager)
-    .frame(width: 800, height: 600)
+    .frame(width: 550)
+    .environment(ContainerManager())
+    .environment(ActivityCenter(reports: reportManager))
+    .environment(reportManager)
 }

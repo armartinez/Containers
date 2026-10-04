@@ -9,9 +9,9 @@ import Foundation
 
 extension URL {
     var parent: URL {
-        return self.appending(component: "..").standardized
+        self.appending(component: "..").standardized
     }
-    
+
     var isFolder: Bool {
         (try? self.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
     }

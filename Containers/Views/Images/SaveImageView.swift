@@ -5,190 +5,94 @@
 //  Created by Axel Martinez on 2026/02/08.
 //
 
-import SwiftUI
+import AppKit
 import ContainerSystem
+import Containerization
 import ContainerizationOCI
+import SwiftUI
 import UniformTypeIdentifiers
-import ContainerResource
 
-struct SaveImageView: View {
-    @Environment(ImageManager.self) private var imageManager
-    @Environment(\.dismiss) private var dismiss
+@MainActor
+enum SaveImagePanel {
+    static func present(
+        image: ImageDescription,
+        imageManager: ImageManager,
+        onError: @escaping @MainActor (Error) -> Void
+    ) {
+        let panel = NSSavePanel()
+        panel.title = "Save Image"
+        panel.message = "Save the image as an OCI compatible tar archive."
+        panel.nameFieldStringValue = defaultFilename(for: image)
+        panel.canCreateDirectories = true
+        panel.allowedContentTypes = [
+            UTType(filenameExtension: "tar")
+        ].compactMap { $0 }
 
-    var images: [ImageDescription]
+        let selection = SavePlatformSelection()
+        let accessory = NSHostingView(
+            rootView: SavePanelAccessoryView(selection: selection)
+        )
+        accessory.frame = NSRect(x: 0, y: 0, width: 380, height: 44)
+        panel.accessoryView = accessory
 
-    @Binding var imageReferences: String
+        let response = panel.runModal()
+        guard response == .OK, let url = panel.url else { return }
+        let platform = selection.value.platform ?? .current
 
-    @SwiftUI.State private var errorMessage: String?
-    @SwiftUI.State private var showProgressView: Bool = false
-    @SwiftUI.State private var showPickLocalImage: Bool = false
-    @SwiftUI.State private var showAdditionalSettings: Bool = false
-    @SwiftUI.State private var platformString: String = Platform.current.description
-    @SwiftUI.State private var outputDirectory: URL?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Save Images")
-                    .font(.headline)
-                
-                Text("Save images as an OCI compatible tar archive.")
-                    .font(.subheadline)
-                    .multilineTextAlignment(.leading)
-                    .foregroundStyle(.secondary)
-
-                if let errorMessage = self.errorMessage {
-                    Text(errorMessage)
-                        .font(.subheadline)
-                        .foregroundStyle(.red)
-                }
+        Task { @MainActor in
+            do {
+                try await imageManager.save(
+                    images: [image],
+                    platform: platform,
+                    outputURL: url
+                )
+                NSWorkspace.shared.activateFileViewerSelecting([url])
+            } catch {
+                onError(error)
             }
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Local Image References")
-                
-                HStack(spacing: 16) {
-                    TextField("", text: $imageReferences)
-                        .frame(maxHeight: .infinity)
-                    Button(action: {
-                        self.showPickLocalImage = true
-                    }, label: {
-                        Text("Add")
-                            .padding(.horizontal, 2)
-                            .frame(maxHeight: .infinity)
-                    })
-                    .buttonStyle(.bordered)
-                }
-                .fixedSize(horizontal: false, vertical: true)
-
-            }
-            
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Output Directory")
-                FileSelectionView(fileURL: $outputDirectory, errorMessage: $errorMessage, allowedContentTypes: [.directory])
-            }
-            
-            Divider()
-            
-            Button(action: {
-                showAdditionalSettings.toggle()
-            }, label: {
-                HStack {
-                    Text("Additional Settings")
-                    Spacer()
-                    Image(systemName: showAdditionalSettings ? "chevron.up" : "chevron.down")
-                        .padding(.trailing, 4)
-                }
-                .font(.headline)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-            })
-            .buttonStyle(.plain)
-            
-            if showAdditionalSettings {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Platform")
-                    Text("⭑ The value takes the form of os/arch or os/arch/variant. \n    ex: `linux/amd64` or `linux/arm/v7`.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    TextField(text: $platformString, label: {})
-                }
-                
-            }
-            
-            
-            Divider()
-
-                            
-            HStack(spacing: 16) {
-                Button(action: {
-                    self.dismiss()
-                }, label: {
-                    Text("Cancel")
-                        .padding(.horizontal, 2)
-                })
-                .buttonStyle(.bordered)
-                
-                Button(action: {
-                    let referencesArray: [String] = self.imageReferences.split(separator: ",").map({$0.trimmingCharacters(in: .whitespacesAndNewlines)})
-                    
-                    guard !referencesArray.isEmpty else {
-                        self.errorMessage = "Image references cannot be empty."
-                        return
-                    }
-                    
-                    let selectedImages: [ImageDescription] = self.images.filter({referencesArray.contains($0.reference)})
-                    let difference = Set(referencesArray).subtracting(Set(selectedImages.map(\.reference)))
-                    
-                    if !difference.isEmpty {
-                        self.errorMessage = "Failed to get images for the following references: \(Array(difference).joined(separator: ","))"
-                        return
-                    }
-                    
-                    guard let outputDirectory else {
-                        self.errorMessage = "Output Directory is required."
-                        return
-                    }
-
-                    Task {
-                        self.showProgressView = true
-                        
-                        do {
-                            let platform = try Platform(from: self.platformString)
-
-                            try await imageManager.save(
-                                images: selectedImages,
-                                platform: platform,
-                                outputDirectory: outputDirectory
-                            )
-                            
-                            let _ = NSWorkspace.shared.open(outputDirectory)
-
-                            self.dismiss()
-                        } catch (let error) {
-                            self.errorMessage = "\(error)"
-                        }
-                        
-                        self.showProgressView = false
-                    }
-                }, label: {
-                    Text("Save")
-                        .padding(.horizontal, 2)
-                })
-                .buttonStyle(.borderedProminent)
-                .tint(.blue)
-            }
-            
-            .frame(maxWidth: .infinity, alignment: .trailing)
-            
         }
-        .padding(.all, 24)
-        .frame(width: 480)
-        .fixedSize(horizontal: false, vertical: true)
-        .sheet(isPresented: $showProgressView, content: {
-            ProgressView()
-        })
-        .sheet(isPresented: $showPickLocalImage, content: {
-            let referencesArray: [String] = self.imageReferences.split(separator: ",").map({$0.trimmingCharacters(in: .whitespacesAndNewlines)})
-            // filter out the selected
-            let availableImages: [ImageDescription] = self.images.filter({!referencesArray.contains($0.reference)})
-
-            ImageSelectionView(images: availableImages, onImageSelect: { reference in
-                self.imageReferences = referencesArray.joined(separator: ",")
-                if self.imageReferences.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    self.imageReferences = reference
-                } else {
-                    self.imageReferences.append(", \(reference)")
-                }
-            })
-        })
-        .onDisappear {
-            self.showProgressView = false
-        }
-        .interactiveDismissDisabled()
-      
     }
 
+    private static func defaultFilename(for image: ImageDescription) -> String {
+        let base = image.reference
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: ":", with: "-")
+        return "\(base).tar"
+    }
+}
+
+@MainActor
+@Observable
+private final class SavePlatformSelection {
+    var value: PlatformSelection = .platform(.current)
+}
+
+private struct SavePanelAccessoryView: View {
+    @Bindable var selection: SavePlatformSelection
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text("Platform:")
+            Picker("", selection: $selection.value) {
+                ForEach(platformOptions, id: \.self) { option in
+                    Text(option.description).tag(option)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(minWidth: 180)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+    }
+
+    private var platformOptions: [PlatformSelection] {
+        var options: [PlatformSelection] = [.platform(.current)]
+
+        if Platform.current.architecture == "arm64" {
+            options.append(.platform(Platform(arch: "amd64", os: "linux")))
+        }
+
+        return options
+    }
 }

@@ -7,28 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		7735092E2F34EAD100C5471F /* ContainerRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = 773508B42F34E4D000C5471F /* ContainerRuntime.swift */; };
-		7735094C2F34EB5700C5471F /* KeyValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 773508892F34E4D000C5471F /* KeyValue.swift */; };
-		7735094F2F34EBBA00C5471F /* ContainerProcess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 773508872F34E4D000C5471F /* ContainerProcess.swift */; };
-		773509502F34EBBF00C5471F /* ContainerInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 773508862F34E4D000C5471F /* ContainerInfo.swift */; };
 		773509582F34FC7D00C5471F /* libContainerSystem.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 773509102F34EA2F00C5471F /* libContainerSystem.dylib */; };
-		77350A742F35A14000C5471F /* ContainerAPIClient in Frameworks */ = {isa = PBXBuildFile; productRef = 77350A732F35A14000C5471F /* ContainerAPIClient */; };
-		77350A762F35A14000C5471F /* ContainerAPIService in Frameworks */ = {isa = PBXBuildFile; productRef = 77350A752F35A14000C5471F /* ContainerAPIService */; };
-		77350A782F35A14000C5471F /* ContainerBuild in Frameworks */ = {isa = PBXBuildFile; productRef = 77350A772F35A14000C5471F /* ContainerBuild */; };
-		77350A7A2F35A14000C5471F /* ContainerCommands in Frameworks */ = {isa = PBXBuildFile; productRef = 77350A792F35A14000C5471F /* ContainerCommands */; };
-		77350A7C2F35A14000C5471F /* ContainerImagesService in Frameworks */ = {isa = PBXBuildFile; productRef = 77350A7B2F35A14000C5471F /* ContainerImagesService */; };
-		77350A7E2F35A14000C5471F /* ContainerLog in Frameworks */ = {isa = PBXBuildFile; productRef = 77350A7D2F35A14000C5471F /* ContainerLog */; };
-		77350A802F35A14000C5471F /* ContainerNetworkService in Frameworks */ = {isa = PBXBuildFile; productRef = 77350A7F2F35A14000C5471F /* ContainerNetworkService */; };
-		77350A822F35A14000C5471F /* ContainerPersistence in Frameworks */ = {isa = PBXBuildFile; productRef = 77350A812F35A14000C5471F /* ContainerPersistence */; };
-		77350AA02F35A32300C5471F /* ContainerSandboxService in Frameworks */ = {isa = PBXBuildFile; productRef = 77350A9F2F35A32300C5471F /* ContainerSandboxService */; };
 		77350BA92F35B17100C5471F /* libContainerSystem.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 773509102F34EA2F00C5471F /* libContainerSystem.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		77350BAB2F35B53700C5471F /* libContainerSystem.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 773509102F34EA2F00C5471F /* libContainerSystem.dylib */; };
 		77350BAC2F35B53700C5471F /* libContainerSystem.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 773509102F34EA2F00C5471F /* libContainerSystem.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		77BA16482F38B1E800D8903B /* ContainerRuntime+Prerequisites.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77BA16462F38B15500D8903B /* ContainerRuntime+Prerequisites.swift */; };
-		77BA16492F38B1ED00D8903B /* ContainerRuntime+Plugins.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77BA16442F38B13600D8903B /* ContainerRuntime+Plugins.swift */; };
-		77BA164B2F38B3A400D8903B /* ContainerRuntime+Services.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77BA164A2F38B3A400D8903B /* ContainerRuntime+Services.swift */; };
-		77D77D692F3A254F00FB803D /* ServerStream+Transfers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77D77D682F3A253A00FB803D /* ServerStream+Transfers.swift */; };
-		77D77D6B2F3A255B00FB803D /* ImageTransfer+Metadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77D77D6A2F3A255B00FB803D /* ImageTransfer+Metadata.swift */; };
+		77C44F1B2F698D0600167C4D /* Containerization in Frameworks */ = {isa = PBXBuildFile; productRef = 77C44F1A2F698D0600167C4D /* Containerization */; };
+		77C44F1D2F698D0600167C4D /* ContainerizationArchive in Frameworks */ = {isa = PBXBuildFile; productRef = 77C44F1C2F698D0600167C4D /* ContainerizationArchive */; };
+		77C44F1F2F698D0600167C4D /* ContainerizationEXT4 in Frameworks */ = {isa = PBXBuildFile; productRef = 77C44F1E2F698D0600167C4D /* ContainerizationEXT4 */; };
+		77C44F212F698D0600167C4D /* ContainerizationExtras in Frameworks */ = {isa = PBXBuildFile; productRef = 77C44F202F698D0600167C4D /* ContainerizationExtras */; };
+		77C44F232F698D0600167C4D /* ContainerizationIO in Frameworks */ = {isa = PBXBuildFile; productRef = 77C44F222F698D0600167C4D /* ContainerizationIO */; };
+		77C44F252F698E9A00167C4D /* ContainerizationOCI in Frameworks */ = {isa = PBXBuildFile; productRef = 77C44F242F698E9A00167C4D /* ContainerizationOCI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -82,59 +70,18 @@
 
 /* Begin PBXFileReference section */
 		773508642F34E40500C5471F /* ContainerSystemTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ContainerSystemTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		773508862F34E4D000C5471F /* ContainerInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContainerInfo.swift; sourceTree = "<group>"; };
-		773508872F34E4D000C5471F /* ContainerProcess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContainerProcess.swift; sourceTree = "<group>"; };
-		773508892F34E4D000C5471F /* KeyValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyValue.swift; sourceTree = "<group>"; };
-		773508B42F34E4D000C5471F /* ContainerRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContainerRuntime.swift; sourceTree = "<group>"; };
 		773509102F34EA2F00C5471F /* libContainerSystem.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libContainerSystem.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
-		77BA16442F38B13600D8903B /* ContainerRuntime+Plugins.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContainerRuntime+Plugins.swift"; sourceTree = "<group>"; };
-		77BA16462F38B15500D8903B /* ContainerRuntime+Prerequisites.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContainerRuntime+Prerequisites.swift"; sourceTree = "<group>"; };
-		77BA164A2F38B3A400D8903B /* ContainerRuntime+Services.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContainerRuntime+Services.swift"; sourceTree = "<group>"; };
-		77D77D682F3A253A00FB803D /* ServerStream+Transfers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ServerStream+Transfers.swift"; sourceTree = "<group>"; };
-		77D77D6A2F3A255B00FB803D /* ImageTransfer+Metadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ImageTransfer+Metadata.swift"; sourceTree = "<group>"; };
 		9829EC422E17BA3C00A9F8D3 /* Containers.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Containers.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1C0F1A12F80000000C0F1A1 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		77350E702F3877FE00C5471F /* Exceptions for "Managers" folder in "Containers" target */ = {
+		774688BA2FDDEDF0000DC29F /* Exceptions for "Containers" folder in "Containers" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				BuilderManager.swift,
-				ContainerManager.swift,
-				DNSManager.swift,
-				ImageManager.swift,
-				SystemManager.swift,
-				VolumeManager.swift,
+				"Supporting Files/Info.plist",
 			);
 			target = 9829EC412E17BA3C00A9F8D3 /* Containers */;
-		};
-		77350E712F3877FE00C5471F /* Exceptions for "Managers" folder in "ContainerSystem" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				BuilderManager.swift,
-				ContainerManager.swift,
-				DNSManager.swift,
-				ImageManager.swift,
-				SystemManager.swift,
-				VolumeManager.swift,
-			);
-			target = 7735090F2F34EA2F00C5471F /* ContainerSystem */;
-		};
-		77350E722F38780400C5471F /* Exceptions for "Services" folder in "Containers" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				SandboxedBuilder.swift,
-				SandboxedContainersService.swift,
-			);
-			target = 9829EC412E17BA3C00A9F8D3 /* Containers */;
-		};
-		77350E742F38780700C5471F /* Exceptions for "Services" folder in "ContainerSystem" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				SandboxedBuilder.swift,
-				SandboxedContainersService.swift,
-			);
-			target = 7735090F2F34EA2F00C5471F /* ContainerSystem */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -144,26 +91,16 @@
 			path = ContainerSystemTests;
 			sourceTree = "<group>";
 		};
-		773509182F34EA9600C5471F /* Services */ = {
+		77C44F6E2F69C4EE00167C4D /* ContainerSystem */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				77350E722F38780400C5471F /* Exceptions for "Services" folder in "Containers" target */,
-				77350E742F38780700C5471F /* Exceptions for "Services" folder in "ContainerSystem" target */,
-			);
-			path = Services;
-			sourceTree = "<group>";
-		};
-		773509202F34EA9F00C5471F /* Managers */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				77350E702F3877FE00C5471F /* Exceptions for "Managers" folder in "Containers" target */,
-				77350E712F3877FE00C5471F /* Exceptions for "Managers" folder in "ContainerSystem" target */,
-			);
-			path = Managers;
+			path = ContainerSystem;
 			sourceTree = "<group>";
 		};
 		9829EC442E17BA3C00A9F8D3 /* Containers */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				774688BA2FDDEDF0000DC29F /* Exceptions for "Containers" folder in "Containers" target */,
+			);
 			path = Containers;
 			sourceTree = "<group>";
 		};
@@ -182,15 +119,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				77350A742F35A14000C5471F /* ContainerAPIClient in Frameworks */,
-				77350A782F35A14000C5471F /* ContainerBuild in Frameworks */,
-				77350A7A2F35A14000C5471F /* ContainerCommands in Frameworks */,
-				77350A7E2F35A14000C5471F /* ContainerLog in Frameworks */,
-				77350A822F35A14000C5471F /* ContainerPersistence in Frameworks */,
-				77350AA02F35A32300C5471F /* ContainerSandboxService in Frameworks */,
-				77350A762F35A14000C5471F /* ContainerAPIService in Frameworks */,
-				77350A802F35A14000C5471F /* ContainerNetworkService in Frameworks */,
-				77350A7C2F35A14000C5471F /* ContainerImagesService in Frameworks */,
+				77C44F232F698D0600167C4D /* ContainerizationIO in Frameworks */,
+				77C44F252F698E9A00167C4D /* ContainerizationOCI in Frameworks */,
+				77C44F1D2F698D0600167C4D /* ContainerizationArchive in Frameworks */,
+				77C44F1F2F698D0600167C4D /* ContainerizationEXT4 in Frameworks */,
+				77C44F212F698D0600167C4D /* ContainerizationExtras in Frameworks */,
+				77C44F1B2F698D0600167C4D /* Containerization in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -205,54 +139,13 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		773509162F34EA7300C5471F /* ContainerSystem */ = {
-			isa = PBXGroup;
-			children = (
-				77D77D6E2F3A25DF00FB803D /* Extensions */,
-				7735094B2F34EB3800C5471F /* Models */,
-				773509202F34EA9F00C5471F /* Managers */,
-				773509182F34EA9600C5471F /* Services */,
-				773508B42F34E4D000C5471F /* ContainerRuntime.swift */,
-				77BA16442F38B13600D8903B /* ContainerRuntime+Plugins.swift */,
-				77BA16462F38B15500D8903B /* ContainerRuntime+Prerequisites.swift */,
-				77BA164A2F38B3A400D8903B /* ContainerRuntime+Services.swift */,
-			);
-			path = ContainerSystem;
-			sourceTree = "<group>";
-		};
-		7735094B2F34EB3800C5471F /* Models */ = {
-			isa = PBXGroup;
-			children = (
-				773508862F34E4D000C5471F /* ContainerInfo.swift */,
-				773508872F34E4D000C5471F /* ContainerProcess.swift */,
-				773508892F34E4D000C5471F /* KeyValue.swift */,
-			);
-			path = Models;
-			sourceTree = "<group>";
-		};
-		77D77D6E2F3A25DF00FB803D /* Extensions */ = {
-			isa = PBXGroup;
-			children = (
-				77D77D6A2F3A255B00FB803D /* ImageTransfer+Metadata.swift */,
-				77D77D682F3A253A00FB803D /* ServerStream+Transfers.swift */,
-			);
-			path = Extensions;
-			sourceTree = "<group>";
-		};
-		77DB33FC2F4078A0006C9BD1 /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Frameworks;
-			sourceTree = "<group>";
-		};
 		9829EC392E17BA3C00A9F8D3 = {
 			isa = PBXGroup;
 			children = (
 				9829EC442E17BA3C00A9F8D3 /* Containers */,
-				773509162F34EA7300C5471F /* ContainerSystem */,
+				77C44F6E2F69C4EE00167C4D /* ContainerSystem */,
 				773508652F34E40500C5471F /* ContainerSystemTests */,
-				77DB33FC2F4078A0006C9BD1 /* Frameworks */,
+				A1C0F1A22F80000000C0F1A1 /* Configuration */,
 				9829EC432E17BA3C00A9F8D3 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -265,6 +158,14 @@
 				773509102F34EA2F00C5471F /* libContainerSystem.dylib */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A1C0F1A22F80000000C0F1A1 /* Configuration */ = {
+			isa = PBXGroup;
+			children = (
+				A1C0F1A12F80000000C0F1A1 /* Base.xcconfig */,
+			);
+			path = Configuration;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -317,17 +218,17 @@
 			);
 			dependencies = (
 			);
+			fileSystemSynchronizedGroups = (
+				77C44F6E2F69C4EE00167C4D /* ContainerSystem */,
+			);
 			name = ContainerSystem;
 			packageProductDependencies = (
-				77350A732F35A14000C5471F /* ContainerAPIClient */,
-				77350A752F35A14000C5471F /* ContainerAPIService */,
-				77350A772F35A14000C5471F /* ContainerBuild */,
-				77350A792F35A14000C5471F /* ContainerCommands */,
-				77350A7B2F35A14000C5471F /* ContainerImagesService */,
-				77350A7D2F35A14000C5471F /* ContainerLog */,
-				77350A7F2F35A14000C5471F /* ContainerNetworkService */,
-				77350A812F35A14000C5471F /* ContainerPersistence */,
-				77350A9F2F35A32300C5471F /* ContainerSandboxService */,
+				77C44F1A2F698D0600167C4D /* Containerization */,
+				77C44F1C2F698D0600167C4D /* ContainerizationArchive */,
+				77C44F1E2F698D0600167C4D /* ContainerizationEXT4 */,
+				77C44F202F698D0600167C4D /* ContainerizationExtras */,
+				77C44F222F698D0600167C4D /* ContainerizationIO */,
+				77C44F242F698E9A00167C4D /* ContainerizationOCI */,
 			);
 			productName = ContainerSystem;
 			productReference = 773509102F34EA2F00C5471F /* libContainerSystem.dylib */;
@@ -337,6 +238,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9829EC4D2E17BA3D00A9F8D3 /* Build configuration list for PBXNativeTarget "Containers" */;
 			buildPhases = (
+				771304772FE81E1000EEA64D /* ShellScript */,
 				9829EC3E2E17BA3C00A9F8D3 /* Sources */,
 				9829EC3F2E17BA3C00A9F8D3 /* Frameworks */,
 				9829EC402E17BA3C00A9F8D3 /* Resources */,
@@ -348,8 +250,6 @@
 				7735094E2F34EB8100C5471F /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				773509182F34EA9600C5471F /* Services */,
-				773509202F34EA9F00C5471F /* Managers */,
 				9829EC442E17BA3C00A9F8D3 /* Containers */,
 			);
 			name = Containers;
@@ -390,7 +290,7 @@
 			mainGroup = 9829EC392E17BA3C00A9F8D3;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				77350A722F35A14000C5471F /* XCRemoteSwiftPackageReference "container" */,
+				77C44F192F698D0600167C4D /* XCRemoteSwiftPackageReference "containerization" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9829EC432E17BA3C00A9F8D3 /* Products */;
@@ -421,6 +321,27 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		771304772FE81E1000EEA64D /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\nswift-format lint -r ${PROJECT_DIR} --configuration .swift-format\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		773508602F34E40500C5471F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -433,15 +354,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7735094C2F34EB5700C5471F /* KeyValue.swift in Sources */,
-				77D77D6B2F3A255B00FB803D /* ImageTransfer+Metadata.swift in Sources */,
-				77BA16492F38B1ED00D8903B /* ContainerRuntime+Plugins.swift in Sources */,
-				77BA164B2F38B3A400D8903B /* ContainerRuntime+Services.swift in Sources */,
-				77BA16482F38B1E800D8903B /* ContainerRuntime+Prerequisites.swift in Sources */,
-				773509502F34EBBF00C5471F /* ContainerInfo.swift in Sources */,
-				77D77D692F3A254F00FB803D /* ServerStream+Transfers.swift in Sources */,
-				7735094F2F34EBBA00C5471F /* ContainerProcess.swift in Sources */,
-				7735092E2F34EAD100C5471F /* ContainerRuntime.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -478,7 +390,6 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = ZTW69M5NDR;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
@@ -497,7 +408,6 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = ZTW69M5NDR;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
@@ -515,12 +425,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = ZTW69M5NDR;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@executable_path/../Frameworks";
 				EXECUTABLE_PREFIX = lib;
-				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				OTHER_SWIFT_FLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -531,12 +440,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = ZTW69M5NDR;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@executable_path/../Frameworks";
 				EXECUTABLE_PREFIX = lib;
-				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				OTHER_SWIFT_FLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -545,6 +453,7 @@
 		};
 		9829EC4B2E17BA3D00A9F8D3 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A1C0F1A12F80000000C0F1A1 /* Base.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -579,7 +488,6 @@
 				COPY_PHASE_STRIP = NO;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = NLTYK5T6U3;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -612,6 +520,7 @@
 		};
 		9829EC4C2E17BA3D00A9F8D3 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A1C0F1A12F80000000C0F1A1 /* Base.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -646,7 +555,6 @@
 				COPY_PHASE_STRIP = NO;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = NLTYK5T6U3;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -676,11 +584,11 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				AUTOMATION_APPLE_EVENTS = NO;
 				CODE_SIGN_ENTITLEMENTS = "Containers/Supporting Files/Containers.entitlements";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = ZTW69M5NDR;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
@@ -694,7 +602,9 @@
 				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = NO;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				ENABLE_USER_SELECTED_FILES = readwrite;
+				EXCLUDED_ARCHS = "x86-64";
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Containers/Supporting Files/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Containers;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -704,11 +614,12 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 26.2;
-				MARKETING_VERSION = 0.1;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.2;
 				OTHER_SWIFT_FLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = app.containers.Containers;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
 				RUNTIME_EXCEPTION_ALLOW_DYLD_ENVIRONMENT_VARIABLES = NO;
 				RUNTIME_EXCEPTION_ALLOW_JIT = NO;
@@ -731,11 +642,11 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				AUTOMATION_APPLE_EVENTS = NO;
 				CODE_SIGN_ENTITLEMENTS = "Containers/Supporting Files/Containers.entitlements";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = ZTW69M5NDR;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
@@ -749,7 +660,9 @@
 				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = NO;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				ENABLE_USER_SELECTED_FILES = readwrite;
+				EXCLUDED_ARCHS = "x86-64";
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Containers/Supporting Files/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Containers;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -759,11 +672,12 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 26.2;
-				MARKETING_VERSION = 0.1;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.2;
 				OTHER_SWIFT_FLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = app.containers.Containers;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
 				RUNTIME_EXCEPTION_ALLOW_DYLD_ENVIRONMENT_VARIABLES = NO;
 				RUNTIME_EXCEPTION_ALLOW_JIT = NO;
@@ -821,61 +735,46 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		77350A722F35A14000C5471F /* XCRemoteSwiftPackageReference "container" */ = {
+		77C44F192F698D0600167C4D /* XCRemoteSwiftPackageReference "containerization" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/apple/container";
+			repositoryURL = "https://github.com/apple/containerization";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 0.9.0;
+				minimumVersion = 0.28.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		77350A732F35A14000C5471F /* ContainerAPIClient */ = {
+		77C44F1A2F698D0600167C4D /* Containerization */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 77350A722F35A14000C5471F /* XCRemoteSwiftPackageReference "container" */;
-			productName = ContainerAPIClient;
+			package = 77C44F192F698D0600167C4D /* XCRemoteSwiftPackageReference "containerization" */;
+			productName = Containerization;
 		};
-		77350A752F35A14000C5471F /* ContainerAPIService */ = {
+		77C44F1C2F698D0600167C4D /* ContainerizationArchive */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 77350A722F35A14000C5471F /* XCRemoteSwiftPackageReference "container" */;
-			productName = ContainerAPIService;
+			package = 77C44F192F698D0600167C4D /* XCRemoteSwiftPackageReference "containerization" */;
+			productName = ContainerizationArchive;
 		};
-		77350A772F35A14000C5471F /* ContainerBuild */ = {
+		77C44F1E2F698D0600167C4D /* ContainerizationEXT4 */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 77350A722F35A14000C5471F /* XCRemoteSwiftPackageReference "container" */;
-			productName = ContainerBuild;
+			package = 77C44F192F698D0600167C4D /* XCRemoteSwiftPackageReference "containerization" */;
+			productName = ContainerizationEXT4;
 		};
-		77350A792F35A14000C5471F /* ContainerCommands */ = {
+		77C44F202F698D0600167C4D /* ContainerizationExtras */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 77350A722F35A14000C5471F /* XCRemoteSwiftPackageReference "container" */;
-			productName = ContainerCommands;
+			package = 77C44F192F698D0600167C4D /* XCRemoteSwiftPackageReference "containerization" */;
+			productName = ContainerizationExtras;
 		};
-		77350A7B2F35A14000C5471F /* ContainerImagesService */ = {
+		77C44F222F698D0600167C4D /* ContainerizationIO */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 77350A722F35A14000C5471F /* XCRemoteSwiftPackageReference "container" */;
-			productName = ContainerImagesService;
+			package = 77C44F192F698D0600167C4D /* XCRemoteSwiftPackageReference "containerization" */;
+			productName = ContainerizationIO;
 		};
-		77350A7D2F35A14000C5471F /* ContainerLog */ = {
+		77C44F242F698E9A00167C4D /* ContainerizationOCI */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 77350A722F35A14000C5471F /* XCRemoteSwiftPackageReference "container" */;
-			productName = ContainerLog;
-		};
-		77350A7F2F35A14000C5471F /* ContainerNetworkService */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 77350A722F35A14000C5471F /* XCRemoteSwiftPackageReference "container" */;
-			productName = ContainerNetworkService;
-		};
-		77350A812F35A14000C5471F /* ContainerPersistence */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 77350A722F35A14000C5471F /* XCRemoteSwiftPackageReference "container" */;
-			productName = ContainerPersistence;
-		};
-		77350A9F2F35A32300C5471F /* ContainerSandboxService */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 77350A722F35A14000C5471F /* XCRemoteSwiftPackageReference "container" */;
-			productName = ContainerSandboxService;
+			package = 77C44F192F698D0600167C4D /* XCRemoteSwiftPackageReference "containerization" */;
+			productName = ContainerizationOCI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
