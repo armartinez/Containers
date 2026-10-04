@@ -4,7 +4,6 @@
 </p>
 
 A modern, native macOS application for managing Linux containers using Apple's container runtime.
-
 Containers pulls, builds and runs OCI images, and manages the containers and volumes made from them, from a dashboard and the menu bar. It is built on Apple's [Containerization](https://github.com/apple/containerization) package: each container runs in its own lightweight virtual machine, started directly by the app, with no daemon or command-line tools to install.
 
 > [!IMPORTANT]
@@ -79,3 +78,9 @@ license, open an issue.
 
 > Releases published before this change were licensed under the Mozilla Public
 > License 2.0 and remain available under those terms.
+
+---
+
+Containers is an independent project and is not affiliated with, endorsed by or sponsored by Apple Inc. Apple, Mac, macOS and Mac App Store are trademarks of Apple Inc., registered in the U.S. and other countries.
+
+Copyright © 2026 Axel Martinez.
