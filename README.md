@@ -5,12 +5,6 @@
 
 A modern, native macOS application for managing Linux containers using Apple's container runtime.
 
-<p align="center">
-  <a href="">
-      <img src="https://github.com/try-containers/Containers/blob/main/.github/store_badge.svg">
-  </a>
-</p>
-
 Containers pulls, builds and runs OCI images, and manages the containers and volumes made from them, from a dashboard and the menu bar. It is built on Apple's [Containerization](https://github.com/apple/containerization) package: each container runs in its own lightweight virtual machine, started directly by the app, with no daemon or command-line tools to install.
 
 > [!IMPORTANT]
@@ -26,7 +20,7 @@ Containers pulls, builds and runs OCI images, and manages the containers and vol
 
 ### Install
 
-Download Containers from the Mac App Store. On first launch it sets up the container system, downloading the Linux kernel and init image it needs, and then opens the dashboard.
+Download Containers from the [Mac App Store](). On first launch it sets up the container system, downloading the Linux kernel and init image it needs, and then opens the dashboard.
 
 ## Documentation
 

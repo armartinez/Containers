@@ -34,19 +34,8 @@ licensing conflict. It does not transfer ownership of your work.
 
 ## Issue Tracking
 
-To file a bug or feature request, use [GitHub](https://github.com/try-containers/Containers/issues/new/choose).
-Be sure to include the following information:
-
-* Context
-  * What are/were you trying to achieve?
-  * What's the impact of this bug/feature?
-
-For bug reports, additionally include the following information:
-
-* The macOS version and the version of Containers you are running.
-* The complete error message, if any.
-* The simplest possible steps to reproduce.
-* For UI issues, a screenshot or screen recording.
+To file a bug or feature request, use [GitHub](https://github.com/try-containers/Containers/issues/new/choose)
+and fill in the template for it.
 
 Before working on an issue, comment on it or ask a maintainer to assign it to you.
 This prevents multiple people from working on the same thing.
@@ -78,10 +67,16 @@ When preparing a pull request, follow this checklist:
 
 ### Formatting contributions
 
-Make sure your contributions are consistent with the rest of the project's formatting. You can do this using `swift format` and the project's `.swift-format` configuration:
+Make sure your contributions are consistent with the rest of the project's formatting. Format only the Swift files you changed, using `swift format` and the project's `.swift-format` configuration, so the pull request doesn't pick up changes to files you didn't touch:
 
 ```bash
-swift format --recursive --configuration .swift-format -i $(find . -type f -name '*.swift' -not -path "*/.*")
+{ git diff --name-only --diff-filter=d main -- '*.swift'; git ls-files --others --exclude-standard -- '*.swift'; } | sort -u | xargs swift format --configuration .swift-format -i
+```
+
+This covers every Swift file your branch adds or changes compared with `main`, committed or not. The build runs the linter, so you can check the result before pushing:
+
+```bash
+swift format lint --recursive --configuration .swift-format Containers ContainerSystem ContainerSystemTests
 ```
 
 ### .gitignore contributions
