@@ -1,6 +1,16 @@
-# Contribute to Containers
+# Containers Contributor’s Guide
 
-## Licensing of Contributions
+Welcome to the Containers community, and thank you for contributing!
+This guide explains how to get involved.
+
+* [Licensing](#licensing)
+* [Issue Tracking](#issue-tracking)
+* [Pull Requests](#pull-requests)
+* [AI Contribution Guidelines](#ai-contribution-guidelines)
+* [Code of Conduct](#code-of-conduct)
+* [Maintainers](#maintainers)
+
+## Licensing
 
 The source code of Containers is released under the
 [PolyForm Noncommercial License 1.0.0](LICENSE.md), and the app is distributed
@@ -22,47 +32,78 @@ agree that:
 This exists solely so the project can ship through the App Store without a
 licensing conflict. It does not transfer ownership of your work.
 
-## Explore Issues
+## Issue Tracking
 
-Find issues from the [Issues tab](https://github.com/try-containers/Containers/issues). If you find an issue you want to work on, please indicate it in the issue and/or attach a draft PR once available. An admin or maintainer will then assign the Issue and/or PR to you.
+To file a bug or feature request, use [GitHub](https://github.com/try-containers/Containers/issues/new/choose).
+Be sure to include the following information:
+
+* Context
+  * What are/were you trying to achieve?
+  * What's the impact of this bug/feature?
+
+For bug reports, additionally include the following information:
+
+* The macOS version and the version of Containers you are running.
+* The complete error message, if any.
+* The simplest possible steps to reproduce.
+* For UI issues, a screenshot or screen recording.
+
+Before working on an issue, comment on it or ask a maintainer to assign it to you.
+This prevents multiple people from working on the same thing.
+
+## Pull Requests
+
+When preparing a pull request, follow this checklist:
+
+* Imitate the conventions of surrounding code.
+* Set your own `DEVELOPMENT_TEAM` in `Configuration/Local.xcconfig` (copy it from `Configuration/Local.xcconfig.example`) rather than in Xcode's Signing & Capabilities tab, which writes it into the project file.
+* Format code as described in [Formatting contributions](#formatting-contributions) (otherwise the build will fail).
+* Verify that the app builds and that the unit tests pass (`xcodebuild test -project Containers.xcodeproj -scheme ContainerSystemTests -destination 'platform=macOS'`).
+* If you changed the UI, add a screenshot or video to the pull request.
+* Follow the [seven rules](https://cbea.ms/git-commit/#seven-rules) of great Git commit messages:
+  * Separate subject from body with a blank line.
+  * Limit the subject line to 50 characters.[^not-enforced]
+  * Capitalize the subject line.
+  * Do not end the subject line with a period.
+  * Use the imperative mood in the subject line.
+  * Wrap the body at 72 characters.[^not-enforced]
+  * Use the body to explain what and why vs. how.
 
 > [!IMPORTANT]
-> Please make sure to first comment under an issue or ask a maintainer to assign you to the issue before working on it. This helps prevent multiple people from working on the same
-> thing, which could result in your work not being merged. Additionally, some issues might be reserved for those with more in-depth knowledge of the codebase.
+> If you plan to make substantial changes or add new features,
+> we encourage you to first discuss them by filing a [GitHub Issue](https://github.com/try-containers/Containers/issues/new/choose).
+> This will save time and increases the chance of your pull request being accepted.
 
-## Signing
+[^not-enforced]: This rule is not enforced in the Containers project.
 
-Copy `Configuration/Local.xcconfig.example` to `Configuration/Local.xcconfig` and set your own `DEVELOPMENT_TEAM`. The file is ignored by git, so set the team there rather than in Xcode's Signing & Capabilities tab, which writes it into the project file.
+### Formatting contributions
 
-## Code Style
+Make sure your contributions are consistent with the rest of the project's formatting. You can do this using `swift format` and the project's `.swift-format` configuration:
 
-Please follow the [Google Swift Style Guide](https://google.github.io/swift/).
+```bash
+swift format --recursive --configuration .swift-format -i $(find . -type f -name '*.swift' -not -path "*/.*")
+```
 
-## Pull Request
+### .gitignore contributions
 
-Once you are happy with your changes, submit a `Pull Request`.
+We do not currently accept contributions to add editor specific additions to the root `.gitignore`. We urge contributors to make a global `.gitignore` file with the rulesets they may want to add instead. A global `.gitignore` file can be set like so:
 
-The pull request opens with a template loaded. Fill out all fields that are relevant.
+```bash
+git config --global core.excludesfile ~/.gitignore
+```
 
-The `PR` should include following information:
-* A descriptive **title** on what changed.
-* A detailed **description** of changes.
-* If you made changes to the UI please add a **screenshot** or **video** as well.
-* If there is a related issue please add a **reference to the issue**. If not, create one beforehand and link it.
-* If your PR is still in progress mark it as **Draft**.
+## AI Contribution Guidelines
 
-### Checks, Tests & Documentation
+We welcome thoughtful use of AI tools in your contributions to this repository. We ask that you adhere to these rules in order to preserve the project's integrity, clarity, and quality, and to respect maintainer bandwidth:
 
-Request a review from one of our admins @armartinez
+* You should be able to explain and justify every line of code or documentation that was generated or assisted by AI. Your submission should reflect your own understanding and intent.
+* Use AI to augment, not totally replace, your reasoning or familiarity, especially for non-trivial parts of the system.
+* Avoid dumping AI-generated walls of text that you cannot explain. Low-effort, unexplained submissions will be deprioritized to protect maintainer bandwidth.
 
-> [!TIP]
-> If it is your first PR, an admin will need to request a review for you.
+## Code of Conduct
 
-> [!IMPORTANT]
-> Please resolve all `Violation` errors in Xcode (except: _TODO:_ warnings). Otherwise the swiftlint check on GitHub will fail.
+To clarify what is expected of our contributors and community members, Containers has adopted the code of conduct defined by the Contributor Covenant. For more detail, please read the [Code of Conduct](CODE_OF_CONDUCT.md).
 
-Once you submit the `PR` GitHub will run a couple of actions which run tests and `SwiftLint` (this can take a couple of minutes). Should a test fail, it cannot be merged until tests succeed.
+## Maintainers
 
-Make sure to resolve all merge-conflicts otherwise the `PR` cannot be merged.
-> [!IMPORTANT]
-> Make sure your code is well documented so others can interact with your code easily!
+The project’s maintainer is [@armartinez](https://github.com/armartinez). Request a review from them once your pull request is ready.

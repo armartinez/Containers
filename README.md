@@ -3,7 +3,7 @@
   <h1 align="center">Containers</h1>
 </p>
 
-A modern, native macOS application for managing Linux containers using Apple's container runtime. 
+A modern, native macOS application for managing Linux containers using Apple's container runtime.
 
 <p align="center">
   <a href="">
@@ -11,54 +11,48 @@ A modern, native macOS application for managing Linux containers using Apple's c
   </a>
 </p>
 
-## Getting Started
+Containers pulls, builds and runs OCI images, and manages the containers and volumes made from them, from a dashboard and the menu bar. It is built on Apple's [Containerization](https://github.com/apple/containerization) package: each container runs in its own lightweight virtual machine, started directly by the app, with no daemon or command-line tools to install.
 
-### First Launch
+> [!IMPORTANT]
+> Containers is an early version under active development, so you may run into bugs and rough edges. If you do, please [report them](https://github.com/try-containers/Containers/issues/new/choose).
+> Contributions are encouraged and welcome, whether it's a fix, a feature or an improvement to the documentation: see the [Contribution Guide](https://github.com/try-containers/Containers/blob/main/CONTRIBUTING.md) to get started.
 
-1. Launch the Containers app from your Applications folder
-2. The app will automatically initialize the container system on first launch
-3. Once initialized, the dashboard will show the main interface with tabs for Containers and Images
+## Get started
 
-### Managing Images
+### Requirements
 
-1. Click the **Images** tab to view and manage container images
-2. To pull a new image:
-   - Click the **Pull Image** button
-   - Enter the image reference (e.g., `docker.io/library/nginx:latest`, `alpine:latest`, `ubuntu:latest`)
-   - Click **Pull** to download the image
-3. View image details by clicking on an image name
-4. Delete unused images with the trash icon
+- A Mac with Apple silicon
+- macOS 26 or later
 
-### Creating and Running Containers
+### Install
 
-1. Click the **Containers** tab
-2. Click **Create Container** to configure a new container:
-   - Select an image from the dropdown (pull an image first if needed)
-   - Configure resources (CPU cores, memory)
-   - Add environment variables if needed
-   - Set up port mappings to expose container services
-   - Configure the command and arguments (optional - uses image defaults if not specified)
-3. Click **Create** to create the container
-4. Start the container using the play button
-5. View container logs, details, and inspect configuration by clicking the container name
+Download Containers from the Mac App Store. On first launch it sets up the container system, downloading the Linux kernel and init image it needs, and then opens the dashboard.
 
-### Menu Bar
+## Documentation
 
-The Containers app also runs in your menu bar, showing the current system status. Click the menu bar icon to:
-- Quickly start/stop the container system
-- Open the dashboard
-- Access settings
+Guides and reference live in the [Containers wiki](https://github.com/try-containers/Containers/wiki):
 
-### System Requirements
+- Getting started with images, containers and volumes
+- Building images from a Dockerfile
+- Reports, logs and troubleshooting
+- Settings and storage
+- Building the app from source
 
-- macOS 26.0 or later
-- Apple Silicon Mac (M1/M2/M3/M4)
+## Community
 
-## Contributing
+- Report a bug or request a feature by [opening an issue](https://github.com/try-containers/Containers/issues/new/choose).
+- Read the [Contribution Guide](https://github.com/try-containers/Containers/blob/main/CONTRIBUTING.md) before sending a pull request.
 
-This is a community-led effort, so we welcome as many contributors who can help. Read the [Contribution Guide](https://github.com/try-containers/Containers/blob/main/CONTRIBUTING.md) for more information.
+This is a community-led effort, so we welcome as many contributors who can help.
 
 <a href="https://www.buymeacoffee.com/armartinez" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-blue.png" alt="Buy Me A Coffee" height="41" width="174"></a>
+
+## Development
+
+[![Build](https://github.com/try-containers/Containers/actions/workflows/containers-build.yml/badge.svg)](https://github.com/try-containers/Containers/actions/workflows/containers-build.yml)
+
+- Open `Containers.xcodeproj` in Xcode 26 or later. Copy `Configuration/Local.xcconfig.example` to `Configuration/Local.xcconfig` and set your team ID to sign the app.
+- [AGENTS.md](AGENTS.md) describes the architecture, conventions and commands, for contributors and coding agents alike.
 
 ## License
 

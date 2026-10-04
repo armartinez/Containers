@@ -40,14 +40,14 @@ jobs:
         run: |
           xcodebuild -resolvePackageDependencies \
             -project Containers.xcodeproj \
-            -scheme Development
+            -scheme "Containers (macOS)"
 
       - name: Build Containers
         run: |
           set -o pipefail
           xcodebuild build \
             -project Containers.xcodeproj \
-            -scheme Development \
+            -scheme "Containers (macOS)" \
             -configuration "${BUILD_CONFIGURATION}" \
             -destination 'platform=macOS' \
             CODE_SIGNING_ALLOWED=NO
