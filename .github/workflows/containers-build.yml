@@ -1,0 +1,17 @@
+name: Build containers
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+  push:
+    branches:
+      - main
+      - release/*
+
+jobs:
+  containers:
+    uses: ./.github/workflows/containers-build-template.yml
+    secrets: inherit

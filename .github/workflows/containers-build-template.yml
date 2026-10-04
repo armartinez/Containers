@@ -1,0 +1,65 @@
+name: Build containers template
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      release:
+        type: boolean
+        description: "Build using the Release configuration"
+        default: false
+
+jobs:
+  buildAndTest:
+    name: Build and Test repo
+    if: github.repository == 'armartinez/Containers'
+    timeout-minutes: 60
+    runs-on: macos-26
+    env:
+      DEVELOPER_DIR: "/Applications/Xcode_26.6.app/Contents/Developer"
+      BUILD_CONFIGURATION: ${{ inputs.release && 'Release' || 'Debug' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6
+        with:
+          fetch-depth: 0
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Resolve packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project Containers.xcodeproj \
+            -scheme Development
+
+      - name: Build Containers
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Containers.xcodeproj \
+            -scheme Development \
+            -configuration "${BUILD_CONFIGURATION}" \
+            -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Test ContainerSystem
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project Containers.xcodeproj \
+            -scheme ContainerSystemTests \
+            -destination 'platform=macOS' \
+            -resultBundlePath TestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Save test results artifact
+        if: failure()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f  # v6
+        with:
+          name: test-results
+          path: TestResults.xcresult
+          retention-days: 14
