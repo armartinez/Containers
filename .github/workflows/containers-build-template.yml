@@ -14,7 +14,7 @@ on:
 jobs:
   buildAndTest:
     name: Build and Test repo
-    if: github.repository == 'armartinez/Containers'
+    if: github.repository == 'try-containers/Containers'
     timeout-minutes: 60
     runs-on: macos-26
     env:
