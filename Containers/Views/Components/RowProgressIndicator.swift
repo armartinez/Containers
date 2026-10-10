@@ -76,11 +76,11 @@ struct RowProgressIndicator: View {
     @ViewBuilder
     private var mark: some View {
         if activity.failureMessage != nil {
-            Image(systemName: Self.failureSymbol)
+            Image(systemName: isHovering ? "info.circle" : Self.failureSymbol)
                 .resizable()
                 .scaledToFit()
                 .frame(width: Self.markSize, height: Self.markSize)
-                .rowTint(.red)
+                .foregroundStyle(.secondary)
         } else if activity.isStopped {
             Image(systemName: "stop.circle")
                 .resizable()

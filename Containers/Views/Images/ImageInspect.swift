@@ -18,17 +18,15 @@ struct ImageInspect: View {
 
     var body: some View {
         Group {
-            if let printable {
-                InspectView(value: printable)
-            } else if let errorMessage {
+            if let errorMessage {
                 ContentUnavailableView(
                     "Inspect Unavailable",
                     systemImage: "doc.text.magnifyingglass",
                     description: Text(errorMessage)
                 )
             } else {
-                // Hidden by the window until ready, so nothing to draw.
-                Color.clear
+                // Shown while loading too, empty, so its scroll view is under the toolbar from the start.
+                InspectView(value: printable)
             }
         }
         .contentReady(isLoaded)

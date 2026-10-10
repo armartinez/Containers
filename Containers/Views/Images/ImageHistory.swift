@@ -39,10 +39,7 @@ struct ImageHistory: View {
 
     var body: some View {
         Group {
-            if isLoading {
-                // Hidden by the window until ready, so nothing to draw.
-                Color.clear
-            } else if layers.isEmpty {
+            if !isLoading, layers.isEmpty {
                 VStack(spacing: 16) {
                     Image(systemName: "square.stack.3d.up.slash")
                         .font(.system(size: 48))
@@ -57,15 +54,24 @@ struct ImageHistory: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(40)
             } else {
+                // Shown while loading too: with no scroll view beneath it, the
+                // toolbar draws a hard line instead of its edge effect. Kept
+                // enabled and not empty, or it doesn't count as one.
                 ScrollView {
-                    VStack(spacing: 8) {
-                        ForEach(Array(layers.enumerated()), id: \.element.id) {
-                            index,
-                            layer in
-                            layerRow(layer: layer, index: index)
+                    if isLoading {
+                        // Hidden by the window until ready.
+                        Color.clear
+                            .frame(height: 1)
+                    } else {
+                        VStack(spacing: 8) {
+                            ForEach(Array(layers.enumerated()), id: \.element.id) {
+                                index,
+                                layer in
+                                layerRow(layer: layer, index: index)
+                            }
                         }
+                        .padding(20)
                     }
-                    .padding(20)
                 }
             }
         }

@@ -11,24 +11,29 @@ import SwiftUI
 
 struct InspectView: View {
     private let root: JSONNode?
-    private let json: String
+    /// `nil` while the caller is still loading. The scroll view shows anyway:
+    /// with none beneath it, the toolbar draws a hard line instead of its edge
+    /// effect.
+    private let json: String?
 
     /// The tree's natural size. A scroll view reports its viewport, not its
     /// content, so the tree is measured here and passed up.
     @State private var treeSize: CGSize = .zero
 
-    init(json: String) {
+    init(json: String?) {
         self.json = json
-        self.root = JSONTree.build(json)
+        self.root = json.flatMap(JSONTree.build)
     }
 
-    init<Value: Encodable>(value: Value) {
-        self.init(json: InspectJSONEncoder.encode(value))
+    init<Value: Encodable>(value: Value?) {
+        self.init(json: value.map(InspectJSONEncoder.encode))
     }
 
-    /// Called during layout, so the state write is deferred.
+    /// Called during layout, so the state write is deferred. The loading
+    /// placeholder isn't measured, or the window would fit to it first.
     private func measureTree(size: CGSize) {
         guard
+            json != nil,
             size.width > 0,
             abs(treeSize.width - size.width) > 0.5
                 || abs(treeSize.height - size.height) > 0.5
@@ -47,11 +52,16 @@ struct InspectView: View {
                     Group {
                         if let root {
                             JSONNodeView(node: root)
-                        } else {
+                        } else if let json {
                             // Not valid JSON: show the raw text.
                             Text(json)
                                 .font(JSONStyle.font)
                                 .textSelection(.enabled)
+                        } else {
+                            // Still loading; hidden by the window until ready.
+                            // Not empty, or the scroll view doesn't count as one.
+                            Color.clear
+                                .frame(width: 1, height: 1)
                         }
                     }
                     // Lines scroll rather than wrap, so long values like digests stay whole.
@@ -70,7 +80,7 @@ struct InspectView: View {
         .contentIdealSize(treeSize)
         // The size arrives a turn after the first layout. Fitting earlier
         // resizes the window in two animations instead of one.
-        .contentReady(treeSize != .zero)
+        .contentReady(json != nil && treeSize != .zero)
         // JSON can be any length, so the window bounds the tab and it scrolls.
         .contentUnbounded()
     }
