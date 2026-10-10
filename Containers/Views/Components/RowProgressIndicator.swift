@@ -22,6 +22,7 @@ struct RowProgressIndicator: View {
     let openReport: (String) -> Void
 
     @State private var isShowingDetails = false
+    @State private var isHovering = false
 
     private static let failureSymbol = "xmark.octagon.fill"
 
@@ -48,6 +49,7 @@ struct RowProgressIndicator: View {
                     mark
                         .frame(width: Self.slot, height: Self.slot)
                         .contentShape(Rectangle())
+                        .onHover { isHovering = $0 }
                 }
                 .buttonStyle(.plain)
                 .help(helpText)
@@ -85,6 +87,12 @@ struct RowProgressIndicator: View {
                 .scaledToFit()
                 .frame(width: Self.markSize, height: Self.markSize)
                 .foregroundStyle(.secondary)
+        } else if isHovering {
+            Image(systemName: "info.circle")
+                .resizable()
+                .scaledToFit()
+                .frame(width: Self.markSize, height: Self.markSize)
+                .rowTint(.blue)
         } else {
             // In the foreground colour, so a selected row turns it white.
             ZStack {
@@ -115,8 +123,8 @@ struct ActivityMenuItems: View {
     let reportManager: ReportManager
 
     var body: some View {
-        let running = work.filter { !$0.hasEnded }
-        let ended = work.filter(\.hasEnded)
+        let running = work.filter(\.isExecuting)
+        let ended = work.filter { !$0.isExecuting }
         let retryable = ended.filter(\.canRetry)
         // Deleting a mark read back from a report deletes the report.
         let reported = ended.filter(\.isReported).compactMap(\.reportID)
@@ -173,10 +181,20 @@ private struct ActivityDetails: View {
                 account
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                buttons
+                if activity.isExecuting {
+                    button("xmark.circle.fill", "Stop the work", action: onStop)
+                } else if activity.canRetry {
+                    button("arrow.clockwise.circle.fill", "Run it again", action: onRetry)
+                }
+
+                if let reportID = activity.reportID {
+                    button("arrow.up.forward.circle", "Show the report of what happened") {
+                        onOpenReport(reportID)
+                    }
+                }
             }
 
-            if !activity.hasEnded {
+            if activity.isExecuting {
                 Text(hovered ?? activity.detail)
                     .font(.caption)
                     .monospacedDigit()
@@ -215,21 +233,6 @@ private struct ActivityDetails: View {
                 }
             }
             .progressViewStyle(.linear)
-        }
-    }
-
-    @ViewBuilder
-    private var buttons: some View {
-        if !activity.hasEnded {
-            button("xmark.circle.fill", "Stop the work", action: onStop)
-        } else if activity.canRetry {
-            button("arrow.clockwise.circle.fill", "Run it again", action: onRetry)
-        }
-
-        if let reportID = activity.reportID {
-            button("arrow.up.forward.circle", "Show the report of what happened") {
-                onOpenReport(reportID)
-            }
         }
     }
 

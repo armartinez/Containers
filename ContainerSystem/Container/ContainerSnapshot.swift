@@ -7,6 +7,7 @@ import ContainerizationOCI
 import Foundation
 
 public enum ContainerStatus: String, Sendable, Codable, Hashable {
+    case starting
     case running
     case stopped
     case stopping

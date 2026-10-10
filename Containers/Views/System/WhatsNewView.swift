@@ -9,37 +9,8 @@ import AppKit
 import SwiftUI
 
 struct WhatsNewView: View {
-    let isFirstLaunch: Bool
     let onContinue: () -> Void
-
     let foregroundColor: Color = .secondary
-
-    private struct Feature {
-        let icon: String
-        let title: String
-        let description: String
-    }
-
-    private let features: [Feature] = [
-        Feature(
-            icon: "shippingbox",
-            title: "Run Linux containers",
-            description:
-                "Create and run Linux containers as lightweight virtual machines on your Mac."
-        ),
-        Feature(
-            icon: "cube.transparent",
-            title: "OCI-compatible images support",
-            description:
-                "Pull and run images from container registries, build from a Dockerfile, or load from a local archive."
-        ),
-        Feature(
-            icon: "cpu",
-            title: "Optimized for Apple Silicon",
-            description:
-                "Written in Swift and designed to get the most out of Apple Silicon."
-        ),
-    ]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 32) {
@@ -50,7 +21,7 @@ struct WhatsNewView: View {
 
             VStack(alignment: .leading, spacing: 28) {
                 HStack(alignment: .center, spacing: 8) {
-                    Text(isFirstLaunch ? "Welcome to" : "What's New in")
+                    Text(AppInfo.release.title)
                         .font(.title)
                         .fontWeight(.bold)
                         .foregroundStyle(foregroundColor)
@@ -60,7 +31,7 @@ struct WhatsNewView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 20) {
-                    ForEach(features, id: \.title) { feature in
+                    ForEach(AppInfo.release.features, id: \.title) { feature in
                         featureRow(feature)
                     }
                 }
@@ -86,7 +57,7 @@ struct WhatsNewView: View {
         .frame(width: 494, height: 540)
     }
 
-    private func featureRow(_ feature: Feature) -> some View {
+    private func featureRow(_ feature: AppInfo.Feature) -> some View {
         HStack(alignment: .top, spacing: 16) {
             Image(systemName: feature.icon)
                 .font(.system(size: 28))
@@ -105,10 +76,6 @@ struct WhatsNewView: View {
     }
 }
 
-#Preview("First Launch") {
-    WhatsNewView(isFirstLaunch: true, onContinue: {})
-}
-
-#Preview("Update") {
-    WhatsNewView(isFirstLaunch: false, onContinue: {})
+#Preview {
+    WhatsNewView(onContinue: {})
 }

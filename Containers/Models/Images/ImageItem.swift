@@ -121,14 +121,22 @@ nonisolated struct ImageItem: Identifiable, Hashable, Equatable, Sendable {
         self.exists = false
     }
 
+    /// What an image with no tag is shown as wherever it is named in full.
+    private static let noTag = "<none>"
+
+    var hasTag: Bool { tag != Self.noTag }
+
+    /// The name with its tag, where it has one.
+    var displayName: String { hasTag ? "\(name):\(tag)" : name }
+
     private static func nameAndTag(from reference: String) -> (String, String) {
         guard
             let parsed = try? ContainerizationOCI.Reference.parse(reference)
         else {
-            return (reference, "<none>")
+            return (reference, noTag)
         }
 
-        return (parsed.name, parsed.tag ?? "<none>")
+        return (parsed.name, parsed.tag ?? noTag)
     }
 
     // Hashable conformance

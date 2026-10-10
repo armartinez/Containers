@@ -14,7 +14,7 @@ struct ImageInfo: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             InfoSection {
-                InfoRow(label: "Tag", value: image.tag)
+                InfoRow(label: "Tag", value: image.hasTag ? image.tag : "—")
                 InfoRow(
                     label: "Digest",
                     value: image.indexDigest.digestHex

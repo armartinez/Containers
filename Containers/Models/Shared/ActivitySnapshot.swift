@@ -10,7 +10,7 @@ import Foundation
 
 nonisolated struct ActivitySnapshot: Hashable, Sendable {
     enum Phase: Hashable, Sendable {
-        case running
+        case executing
         case stopped
         case failed(reportID: String?)
     }
@@ -48,11 +48,11 @@ nonisolated struct ActivitySnapshot: Hashable, Sendable {
         } else if activity.isStopped {
             self.phase = .stopped
         } else {
-            self.phase = .running
+            self.phase = .executing
         }
     }
 
-    var hasEnded: Bool { phase != .running }
+    var isExecuting: Bool { phase == .executing }
     var isStopped: Bool { phase == .stopped }
 
     var reportID: String? {
@@ -103,6 +103,13 @@ extension ActivitySnapshot {
 
     private func failure(of activity: ActivityCenter.Activity) -> ErrorAlert? {
         activity.error.map { ErrorAlert(activity.failureTitle, error: $0) }
+    }
+
+    /// A failure or a stop always shows, so it can be read or run again.
+    var showsProgress: Bool {
+        guard isExecuting, case .work(let activity) = source else { return true }
+
+        return activity.showsProgress
     }
 
     var step: String { progress?.localizedDescription ?? "" }

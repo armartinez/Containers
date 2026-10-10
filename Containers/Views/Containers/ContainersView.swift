@@ -13,7 +13,6 @@ struct ContainersView: View {
     @Environment(SystemManager.self) private var system
     @Environment(VolumeManager.self) private var volumeManager
     @Environment(ActivityCenter.self) private var activityCenter
-    @Environment(ReportManager.self) private var reportManager
     @Environment(\.openWindow) private var openWindow
 
     @Binding var searchText: String
@@ -35,38 +34,16 @@ struct ContainersView: View {
     private func withCreations(
         _ containers: [ContainerItem]
     ) -> [ContainerItem] {
-        let working = activityCenter.activities(ofKind: .container)
-        var madeIDs = Set<String>()
-
-        let made = containers.map { container -> ContainerItem in
-            var container = container
-
-            if let activity = working.first(where: { $0.id == container.id }) {
-                container.activity = ActivitySnapshot(activity)
-            } else if container.status != .running,
-                let report = reportManager.latestReport(
-                    named: container.id,
-                    ofKind: [.container]
-                ), !report.isRead
-            {
-                // An unread failure from an earlier run, unless the container
-                // has started since.
-                container.activity = ActivitySnapshot(report: report)
-            }
-
-            madeIDs.insert(container.id)
-
-            return container
-        }
-
-        let pending =
-            working
-            .filter { !madeIDs.contains($0.id) }
-            .map {
-                ContainerItem(pending: ActivitySnapshot($0))
-            }
-
-        return (pending + made).sorted { $0.id < $1.id }
+        activityCenter.marked(
+            containers,
+            ofKind: .container,
+            // An unread failure from an earlier run, unless the container has
+            // started since.
+            reportName: { $0.status == .running ? nil : $0.id },
+            reportKinds: [.container],
+            pendingRow: ContainerItem.init(pending:)
+        )
+        .sorted { $0.id < $1.id }
     }
 
     private var filteredContainers: [ContainerItem] {
@@ -90,38 +67,30 @@ struct ContainersView: View {
         )
     }
 
-    /// One whose last action failed counts, so it can be tried again.
-    private func isSettled(_ container: ContainerItem) -> Bool {
-        !container.isPending && (container.activity?.hasEnded ?? true)
-    }
-
     private func startable(
         _ containers: [ContainerItem]
     ) -> [ContainerItem] {
-        containers.filter { isSettled($0) && $0.status == .stopped }
+        containers.filter { !$0.isDisabled && $0.status == .stopped }
     }
 
     private func stoppable(
         _ containers: [ContainerItem]
     ) -> [ContainerItem] {
-        containers.filter { isSettled($0) && $0.status == .running }
+        containers.filter { !$0.isDisabled && $0.status == .running }
     }
 
     private var rowActions: TableRowActions<ContainerItem> {
         TableRowActions(
             noun: "Container",
             name: \.id,
-            // A row still being created has nothing to show yet.
-            canOpen: { !$0.isPending },
             open: openDetails(for:),
-            canDelete: { $0.activity?.hasEnded ?? true },
-            deletesWithoutAsking: \.isPending,
+            canDelete: { !$0.isExecuting },
             delete: deleteContainers,
             canStart: { !startable($0).isEmpty },
             start: { startContainers(startable($0)) },
             canStop: { !stoppable($0).isEmpty },
             stop: { stopContainers(stoppable($0)) },
-            pendingWork: { $0.isPending ? $0.activity : nil }
+            pendingWork: \.pendingWork
         )
     }
 
@@ -152,42 +121,28 @@ struct ContainersView: View {
         ) {
             TableColumn("State", value: \.formattedState) { container in
                 // The name is on the tooltip and for VoiceOver.
-                Image(systemName: stateSymbol(for: container.status))
+                Image(systemName: stateSymbol(for: container))
                     .font(.system(size: 8))
-                    .rowTint(stateColor(for: container.status))
+                    .rowTint(stateColor(for: container))
                     .frame(maxWidth: .infinity)
-                    .help(stateLabel(for: container.status))
-                    .accessibilityLabel(stateLabel(for: container.status))
+                    .help(stateLabel(for: container))
+                    .accessibilityLabel(stateLabel(for: container))
             }
             .width(min: 36, ideal: 44, max: 60)
 
             TableColumn("Name", value: \.name) { container in
-                HStack(spacing: 4) {
-                    Text(container.name)
-                        .lineLimit(1)
-                        .foregroundStyle(
-                            container.isPending ? .secondary : .primary
-                        )
-
-                    if let activity = container.activity {
-                        Spacer(minLength: 0)
-
-                        RowProgressIndicator(
-                            activity: activity,
-                            activityCenter: activityCenter,
-                            openReport: openWindow.report
-                        )
-                    }
-                }
+                ActivityRowName(
+                    row: container,
+                    activityCenter: activityCenter,
+                    openReport: openWindow.report
+                )
             }
             .width(min: 100, ideal: 150, max: 250)
 
             TableColumn("Image", value: \.imageName) { container in
                 Text(container.imageName)
                     .lineLimit(1)
-                    .foregroundStyle(
-                        container.isPending ? .secondary : .primary
-                    )
+                    .rowForeground(for: container)
             }
             .width(min: 120, ideal: 180, max: 300)
 
@@ -198,10 +153,7 @@ struct ContainersView: View {
                 )
                 .lineLimit(1)
                 .font(.system(.body, design: .monospaced))
-                .foregroundStyle(
-                    !container.hasIPAddress
-                        ? .secondary : .primary
-                )
+                .rowForeground(for: container, isDimmed: !container.hasIPAddress)
                 .textSelection(.enabled)
             }
             .width(min: 100, ideal: 120, max: 140)
@@ -214,10 +166,7 @@ struct ContainersView: View {
                     )
                     .lineLimit(1)
                     .font(.system(.body, design: .monospaced))
-                    .foregroundStyle(
-                        container.status == .running
-                            ? .primary : .secondary
-                    )
+                    .rowForeground(for: container, isDimmed: container.status != .running)
                 }
             }
             .width(min: 80, ideal: 100, max: 140)
@@ -239,23 +188,23 @@ struct ContainersView: View {
 
     /// Unknown gets its own mark: it shares the stopped colour, and a hollow
     /// ring would pass it off as stopped.
-    private func stateSymbol(for status: ContainerStatus) -> String {
-        switch status {
-        case .running, .stopping: "circle.fill"
+    private func stateSymbol(for container: ContainerItem) -> String {
+        switch container.status {
+        case .starting, .running, .stopping: "circle.fill"
         case .stopped: "circle"
         case .unknown: "questionmark.circle"
         }
     }
 
-    private func stateLabel(for status: ContainerStatus) -> String {
-        status == .unknown
-            ? "Unknown" : status.rawValue.localizedCapitalized
+    private func stateLabel(for container: ContainerItem) -> String {
+        container.status == .unknown
+            ? "Unknown" : container.status.rawValue.localizedCapitalized
     }
 
-    private func stateColor(for status: ContainerStatus) -> Color {
-        switch status {
+    private func stateColor(for container: ContainerItem) -> Color {
+        switch container.status {
         case .running: return .green
-        case .stopping: return .orange
+        case .starting, .stopping: return .orange
         case .stopped: return .secondary
         case .unknown: return .secondary
         }
@@ -270,7 +219,9 @@ struct ContainersView: View {
                 on: container.id,
                 kind: .container,
                 subtitle: container.imageName,
-                failureTitle: "The container couldn’t be started."
+                failureTitle: "The container couldn’t be started.",
+                // The state dot shows it.
+                showsProgress: false
             ) {
                 try await containerManager.run(id: container.id)
             }
@@ -286,7 +237,9 @@ struct ContainersView: View {
                 on: container.id,
                 kind: .container,
                 subtitle: container.imageName,
-                failureTitle: "The container couldn’t be stopped."
+                failureTitle: "The container couldn’t be stopped.",
+                // The state dot shows it.
+                showsProgress: false
             ) {
                 try await containerManager.stop(
                     ids: [container.id],
@@ -300,12 +253,6 @@ struct ContainersView: View {
         let containerManager = containerManager
 
         for container in containers {
-            // A row that only stands for failed work is that work.
-            if container.isPending, let activity = container.activity {
-                activityCenter.remove(activity.id)
-                continue
-            }
-
             activityCenter.run(
                 on: container.id,
                 kind: .container,

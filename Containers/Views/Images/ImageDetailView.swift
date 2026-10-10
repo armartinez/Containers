@@ -51,7 +51,7 @@ struct ImageDetailWindow: View {
             )
         )
         .navigationTitle(
-            image.map { Text("\($0.name):\($0.tag)") } ?? Text("")
+            image.map { Text($0.displayName) } ?? Text("")
         )
         .task(id: imageReference) {
             await load()
@@ -187,7 +187,7 @@ struct ImageDetailView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(
-                "Delete \(image.name):\(image.tag)? This cannot be undone."
+                "Delete \(image.displayName)? This cannot be undone."
             )
         }
         .errorAlert($errorAlert)

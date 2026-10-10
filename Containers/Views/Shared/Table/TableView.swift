@@ -21,18 +21,16 @@ struct TableRowActions<Row> {
     var noun: String
     /// What a row is called when asking to delete it.
     var name: (Row) -> String
-    var canOpen: (Row) -> Bool = { _ in true }
     var open: (Row) -> Void
     var canDelete: (Row) -> Bool = { _ in true }
-    /// Rows with nothing behind them to lose, such as failed work, go
-    /// without being asked about.
-    var deletesWithoutAsking: (Row) -> Bool = { _ in false }
     var delete: ([Row]) -> Void
     var canStart: ([Row]) -> Bool = { _ in false }
     var start: ([Row]) -> Void = { _ in }
     var canStop: ([Row]) -> Bool = { _ in false }
     var stop: ([Row]) -> Void = { _ in }
     /// The work a row only stands in for, whose own menu it gets instead.
+    /// Such a row has nothing to show details of, and deleting it removes
+    /// the work without asking, as there is nothing behind it to lose.
     var pendingWork: (Row) -> ActivitySnapshot? = { _ in nil }
 }
 
@@ -66,6 +64,7 @@ where
     @State private var loadError: ErrorAlert?
     @State private var rowsToDelete: [Row] = []
     @State private var isConfirmingDelete = false
+    @State private var reloaderID = UUID()
 
     init(
         rows: [Row],
@@ -124,18 +123,22 @@ where
             Task { await refresh() }
         }
         .onAppear {
+            if let activityKind {
+                // An action on these rows executes until they show its outcome.
+                activityCenter.addListReloader(reloaderID, ofKind: activityKind) {
+                    guard system.status == .running else { return }
+                    await refresh()
+                }
+            }
+
             Task {
                 guard system.status == .running else { return }
                 await refresh()
             }
         }
-        .onChange(of: activityCenter.endings) { _, _ in
-            Task {
-                await refresh()
-
-                if let activityKind {
-                    activityCenter.forgetFinished(ofKind: activityKind)
-                }
+        .onDisappear {
+            if let activityKind {
+                activityCenter.removeListReloader(reloaderID, ofKind: activityKind)
             }
         }
         .onChange(of: selectionActions, initial: true) { _, newActions in
@@ -270,7 +273,7 @@ where
         let selected = rows(for: ids)
 
         guard selected.count == 1, let row = selected.first,
-            rowActions.canOpen(row)
+            rowActions.pendingWork(row) == nil
         else { return nil }
 
         return row
@@ -316,14 +319,17 @@ where
     }
 
     private func requestDelete(_ rows: [Row]) {
-        let unasked = rows.filter(rowActions.deletesWithoutAsking)
+        let pending = rows.filter { rowActions.pendingWork($0) != nil }
 
-        if !unasked.isEmpty {
-            rowActions.delete(unasked)
-            selection.subtract(unasked.map(\.id))
+        if !pending.isEmpty {
+            for work in pending.compactMap(rowActions.pendingWork) {
+                activityCenter.remove(work.id)
+            }
+
+            selection.subtract(pending.map(\.id))
         }
 
-        let asked = rows.filter { !rowActions.deletesWithoutAsking($0) }
+        let asked = rows.filter { rowActions.pendingWork($0) == nil }
 
         guard !asked.isEmpty else { return }
 

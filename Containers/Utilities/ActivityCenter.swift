@@ -18,7 +18,8 @@ final class ActivityCenter {
         case volume
     }
 
-    /// Work under way anywhere in the app.
+    /// An action the user took anywhere in the app. It executes until its
+    /// work is done and the lists showing its items have read the outcome.
     @Observable
     @MainActor
     final class Activity: Identifiable {
@@ -28,7 +29,6 @@ final class ActivityCenter {
         fileprivate(set) var error: (any Error)?
         fileprivate(set) var reportID: String?
         fileprivate(set) var isStopped = false
-        fileprivate(set) var isFinished = false
         fileprivate(set) var startedAt: Date?
         /// A new one for every run, so a retry starts from nothing.
         fileprivate(set) var progress: ProgressObserver?
@@ -45,9 +45,12 @@ final class ActivityCenter {
         let subtitle: String
         let canRetry: Bool
         let failureTitle: String
+        /// Off where the item's own state already shows the work under way.
+        let showsProgress: Bool
 
-        var hasEnded: Bool {
-            error != nil || isStopped
+        /// One that succeeded is dropped, so only a failure or a stop ends it.
+        var isExecuting: Bool {
+            error == nil && !isStopped
         }
 
         fileprivate init(
@@ -57,6 +60,7 @@ final class ActivityCenter {
             subtitle: String,
             failureTitle: String,
             canRetry: Bool,
+            showsProgress: Bool,
             work: @escaping (Progress) async throws -> String?
         ) {
             self.id = id
@@ -65,6 +69,7 @@ final class ActivityCenter {
             self.subtitle = subtitle
             self.failureTitle = failureTitle
             self.canRetry = canRetry
+            self.showsProgress = showsProgress
             self.work = work
         }
 
@@ -80,8 +85,10 @@ final class ActivityCenter {
     }
 
     private(set) var activities: [Activity] = []
-    /// Lists watch this to know when to read what they show again.
-    private(set) var endings: Int = 0
+
+    /// The lists on screen, so an activity can wait for them to read its
+    /// outcome before it stops executing.
+    @ObservationIgnored private var listReloaders: [Kind: [UUID: () async -> Void]] = [:]
 
     private let reports: ReportManager
 
@@ -102,6 +109,7 @@ final class ActivityCenter {
         subtitle: String = "",
         failureTitle: String,
         canRetry: Bool = true,
+        showsProgress: Bool = true,
         work: @escaping (Progress) async throws -> String?
     ) {
         guard !activities.contains(where: { $0.id == id && $0.kind == kind }) else {
@@ -115,6 +123,7 @@ final class ActivityCenter {
             subtitle: subtitle,
             failureTitle: failureTitle,
             canRetry: canRetry,
+            showsProgress: showsProgress,
             work: work
         )
 
@@ -123,7 +132,7 @@ final class ActivityCenter {
     }
 
     func stop(_ id: String) {
-        guard let activity = activity(id), !activity.hasEnded else { return }
+        guard let activity = activity(id), activity.isExecuting else { return }
 
         activity.isStopped = true
         activity.task?.cancel()
@@ -131,7 +140,7 @@ final class ActivityCenter {
 
     func retry(_ id: String) {
         guard let activity = activity(id), activity.canRetry,
-            activity.hasEnded
+            !activity.isExecuting
         else {
             return
         }
@@ -148,9 +157,10 @@ final class ActivityCenter {
         kind: Kind,
         subtitle: String = "",
         failureTitle: String,
+        showsProgress: Bool = true,
         work: @escaping () async throws -> Void
     ) {
-        if let earlier = activity(id), earlier.hasEnded {
+        if let earlier = activity(id), !earlier.isExecuting {
             drop(earlier)
         }
 
@@ -159,7 +169,8 @@ final class ActivityCenter {
             kind: kind,
             title: id,
             subtitle: subtitle,
-            failureTitle: failureTitle
+            failureTitle: failureTitle,
+            showsProgress: showsProgress
         ) { _ in
             try await work()
             return nil
@@ -167,7 +178,17 @@ final class ActivityCenter {
     }
 
     func isWorking(on id: String) -> Bool {
-        activities.contains { $0.id == id && !$0.hasEnded && !$0.isFinished }
+        activities.contains { $0.id == id && $0.isExecuting }
+    }
+
+    /// Registers a list on screen that shows items of `kind`. Remove it
+    /// with `removeListReloader(_:ofKind:)` once the list goes.
+    func addListReloader(_ id: UUID, ofKind kind: Kind, reload: @escaping () async -> Void) {
+        listReloaders[kind, default: [:]][id] = reload
+    }
+
+    func removeListReloader(_ id: UUID, ofKind kind: Kind) {
+        listReloaders[kind]?[id] = nil
     }
 
     func remove(_ id: String) {
@@ -179,12 +200,8 @@ final class ActivityCenter {
 
     func forgetFailures(reportedAs reportIDs: Set<String>) {
         activities.removeAll { activity in
-            activity.hasEnded && activity.reportID.map(reportIDs.contains) == true
+            !activity.isExecuting && activity.reportID.map(reportIDs.contains) == true
         }
-    }
-
-    func forgetFinished(ofKind kind: Kind) {
-        activities.removeAll { $0.kind == kind && $0.isFinished }
     }
 
     /// Writing a report can fail, and a mark with none behind it can never be
@@ -234,19 +251,16 @@ final class ActivityCenter {
                     activity.title = made
                 }
 
-                activity.isFinished = true
-
-                self?.endings += 1
-
-                // For work that finished while its list wasn't on screen to
-                // let go of it.
-                try? await Task.sleep(for: .seconds(1))
+                await self?.reloadLists(ofKind: activity.kind)
 
                 self?.drop(activity)
             } catch {
-                guard activity.attempt == attempt else { return }
+                guard activity.attempt == attempt, !activity.isStopped else { return }
 
-                guard !activity.isStopped else { return }
+                // A failed action can still have changed its item.
+                await self?.reloadLists(ofKind: activity.kind)
+
+                guard activity.attempt == attempt, !activity.isStopped else { return }
 
                 activity.error = error
 
@@ -259,13 +273,70 @@ final class ActivityCenter {
                 )
 
                 activity.reportID = entry?.id
-
-                self?.endings += 1
             }
         }
     }
 
+    /// A list that isn't on screen reads everything again when it appears.
+    /// Unstructured, so stopping the activity can't cancel a list's load
+    /// and have it report a failure.
+    private func reloadLists(ofKind kind: Kind) async {
+        let reloaders = listReloaders[kind, default: [:]].values
+
+        await Task {
+            for reload in reloaders {
+                await reload()
+            }
+        }.value
+    }
+
     private func drop(_ activity: Activity) {
         activities.removeAll { $0 === activity }
+    }
+}
+
+// MARK: - Rows
+
+extension ActivityCenter {
+    /// Attaches each row's work, or else an unread failure reported under the
+    /// name `reportName` gives it, where it gives one.
+    ///
+    /// Given `pendingRow`, work of `kind` with no row yet gets one, keyed by
+    /// the item it will make, so it becomes that item's row in place.
+    func marked<Row: ActivityRow>(
+        _ rows: [Row],
+        ofKind kind: Kind,
+        reportName: (Row) -> String?,
+        reportKinds: Set<Report.Kind>,
+        pendingRow: ((ActivitySnapshot) -> Row)? = nil
+    ) -> [Row] {
+        let working = activities(ofKind: kind)
+
+        let marked = rows.map { row in
+            var row = row
+
+            if let activity = working.first(where: { $0.id == row.id }) {
+                row.activity = ActivitySnapshot(activity)
+            } else if let name = reportName(row),
+                let report = reports.latestReport(named: name, ofKind: reportKinds),
+                !report.isRead
+            {
+                // Keyed by the row: an image is reported under the reference
+                // asked for, but its row is known by the resolved one.
+                row.activity = ActivitySnapshot(report: report, id: row.id)
+            }
+
+            return row
+        }
+
+        guard let pendingRow else { return marked }
+
+        let markedIDs = Set(marked.map(\.id))
+        let pending =
+            working
+            .filter { !markedIDs.contains($0.id) }
+            .map { pendingRow(ActivitySnapshot($0)) }
+
+        return pending + marked
     }
 }

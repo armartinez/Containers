@@ -35,7 +35,13 @@ final class ProgressObserver {
     }
 
     private func refresh() {
-        fractionCompleted = progress.isIndeterminate ? nil : progress.fractionCompleted
+        // TODO: Review this implementation
+        // A step's handler sets its total and then its count, in two writes, on whichever thread
+        // reports progress. This runs on the main actor whenever it's scheduled, without taking
+        // the handler's lock, so it can read between the two: the new, larger total against the
+        // old count, which shows less done than before. A run only moves forward, so keep the
+        // highest fraction seen.
+        fractionCompleted = progress.isIndeterminate ? nil : max(fractionCompleted ?? 0, progress.fractionCompleted)
         localizedDescription = progress.localizedDescription ?? ""
         localizedAdditionalDescription = progress.localizedAdditionalDescription ?? ""
     }

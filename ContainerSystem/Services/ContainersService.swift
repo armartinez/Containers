@@ -51,6 +51,7 @@ private final class ExitWaiter: @unchecked Sendable {
                 }
 
                 self.continuation = continuation
+
                 lock.unlock()
 
                 Task {
@@ -297,6 +298,7 @@ actor ContainersService {
             try bundle.cloneContainerRootFs(cloning: imageFs, readonly: configuration.readOnly)
 
             let snapshot = ContainerSnapshot(configuration: configuration, status: .stopped, networks: [])
+
             containers[configuration.id] = ContainerState(
                 snapshot: snapshot,
                 container: LinuxContainer?.none,
@@ -304,7 +306,6 @@ actor ContainersService {
             )
 
             // Container created successfully
-
         } catch {
             log.error("Failed to create container: \(error)")
             try? bundle.delete()
@@ -328,7 +329,23 @@ actor ContainersService {
             return
         }
 
+        let previousStatus = state.snapshot.status
+        var hasBooted = false
+
+        // Shown while the virtual machine boots, which is most of a start.
+        state.snapshot.status = .starting
+        containers[id] = state
+        notifyStateChange()
+
+        defer {
+            if !hasBooted {
+                containers[id]?.snapshot.status = previousStatus
+                notifyStateChange()
+            }
+        }
+
         let bundle: ContainerSystem.Bundle
+
         if let existingBundle = state.bundle {
             bundle = existingBundle
         } else {
@@ -448,6 +465,7 @@ actor ContainersService {
                 )
             ]
             containers[id] = state
+            hasBooted = true
 
             // Notify observers that networks have been assigned
             notifyStateChange()
@@ -474,7 +492,17 @@ actor ContainersService {
             throw ContainerizationError(.invalidState, message: "container not bootstrapped: \(id)")
         }
 
-        try await container.start()
+        do {
+            try await container.start()
+        } catch {
+            if isInit {
+                // Booted, but it never got as far as running.
+                containers[id]?.snapshot.status = .stopped
+                notifyStateChange()
+            }
+
+            throw error
+        }
         // Container init process started
 
         if isInit {
@@ -583,10 +611,17 @@ actor ContainersService {
         }
 
         if let container = state.container {
+            // Shown while the container winds down, which can last until the stop timeout.
+            containers[id]?.snapshot.status = .stopping
+            notifyStateChange()
+
             do {
                 try await gracefulStopContainer(container, stopOpts: options)
             } catch let err as ContainerizationError {
                 if err.code != .interrupted {
+                    // It is still running, as far as anyone can tell.
+                    containers[id]?.snapshot.status = state.snapshot.status
+                    notifyStateChange()
                     throw err
                 }
             } catch {

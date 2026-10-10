@@ -11,7 +11,6 @@ import SwiftUI
 struct VolumesView: View {
     @Environment(VolumeManager.self) private var volumeManager
     @Environment(ActivityCenter.self) private var activityCenter
-    @Environment(ReportManager.self) private var reportManager
     @Environment(\.openWindow) private var openWindow
 
     @Binding var searchText: String
@@ -40,22 +39,12 @@ struct VolumesView: View {
 
     /// Attaches each volume's work, or an unread failure from an earlier run.
     private func marked(_ volumes: [VolumeItem]) -> [VolumeItem] {
-        volumes.map { volume in
-            var volume = volume
-
-            if let activity = activityCenter.activities(ofKind: .volume).first(
-                where: { $0.id == volume.id }
-            ) {
-                volume.activity = ActivitySnapshot(activity)
-            } else if let report = reportManager.latestReport(
-                named: volume.id,
-                ofKind: [.volume]
-            ), !report.isRead {
-                volume.activity = ActivitySnapshot(report: report)
-            }
-
-            return volume
-        }
+        activityCenter.marked(
+            volumes,
+            ofKind: .volume,
+            reportName: { $0.id },
+            reportKinds: [.volume]
+        )
     }
 
     private var rowActions: TableRowActions<VolumeItem> {
@@ -64,7 +53,7 @@ struct VolumesView: View {
             name: \.name,
             open: openDetails(for:),
             // Not a volume a container is using.
-            canDelete: { ($0.activity?.hasEnded ?? true) && !$0.isInUse },
+            canDelete: { !$0.isExecuting && !$0.isInUse },
             delete: deleteVolumes
         )
     }
@@ -83,25 +72,17 @@ struct VolumesView: View {
             onRefresh: listVolumes
         ) {
             TableColumn("Name", value: \.name) { volume in
-                HStack(spacing: 4) {
-                    Text(volume.name)
-                        .lineLimit(1)
-
-                    if let activity = volume.activity {
-                        Spacer(minLength: 0)
-
-                        RowProgressIndicator(
-                            activity: activity,
-                            activityCenter: activityCenter,
-                            openReport: openWindow.report
-                        )
-                    }
-                }
+                ActivityRowName(
+                    row: volume,
+                    activityCenter: activityCenter,
+                    openReport: openWindow.report
+                )
             }
             .width(min: 40, ideal: 40)
 
             TableColumn("Type", value: \.typeText) { volume in
                 Text(volume.volumeType.rawValue)
+                    .rowForeground(for: volume)
             }
             .width(80)
 
@@ -120,6 +101,7 @@ struct VolumesView: View {
             TableColumn("Size", value: \.sizeSort) { volume in
                 if let size = volume.formattedSize {
                     Text(size)
+                        .rowForeground(for: volume)
                 } else {
                     Text("Not Specified")
                         .foregroundStyle(.secondary)
@@ -129,6 +111,7 @@ struct VolumesView: View {
 
             TableColumn("Created", value: \.createdAt) { volume in
                 Text(volume.formattedCreated)
+                    .rowForeground(for: volume)
             }
             .width(min: 140, ideal: 180, max: 220)
         }

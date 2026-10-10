@@ -13,7 +13,6 @@ import TipKit
 
 struct ImagesView: View {
     @Environment(ImageManager.self) private var imageManager
-    @Environment(ReportManager.self) private var reportManager
     @Environment(ActivityCenter.self) private var activityCenter
     @Environment(\.openWindow) private var openWindow
 
@@ -36,35 +35,14 @@ struct ImagesView: View {
     /// An image still on its way gets a row of its own, keyed by the reference
     /// it will have, so it becomes that row in place when it lands.
     private var allImages: [ImageItem] {
-        let working = activityCenter.activities(ofKind: .image)
-        var landedIDs = Set<String>()
-
-        let landed = images.map { image -> ImageItem in
-            var image = image
-            // Read first: once the row carries work, its id is the work's.
-            let identity = image.id
-
-            if let activity = working.first(where: { $0.id == image.id }) {
-                image.activity = ActivitySnapshot(activity)
-            } else if let report = reportManager.latestReport(
-                named: image.imageDescription.reference,
-                ofKind: [.image, .build]
-            ), !report.isRead {
-                // Builds and pulls are both reported against the image.
-                image.activity = ActivitySnapshot(report: report, id: identity)
-            }
-
-            landedIDs.insert(image.id)
-
-            return image
-        }
-
-        let pending =
-            working
-            .filter { !landedIDs.contains($0.id) }
-            .map { ImageItem(pending: ActivitySnapshot($0)) }
-
-        return pending + landed
+        activityCenter.marked(
+            images,
+            ofKind: .image,
+            // Builds and pulls are both reported against the image.
+            reportName: { $0.imageDescription.reference },
+            reportKinds: [.image, .build],
+            pendingRow: ImageItem.init(pending:)
+        )
     }
 
     private var filteredImages: [ImageItem] {
@@ -81,14 +59,9 @@ struct ImagesView: View {
         return filtered
     }
 
-    /// One whose delete failed counts, so it can be tried again.
-    private func isSettled(_ image: ImageItem) -> Bool {
-        !image.isPending && (image.activity?.hasEnded ?? true)
-    }
-
     /// Running asks for a container's settings, so it is one image at a time.
     private func runnable(_ images: [ImageItem]) -> ImageItem? {
-        guard images.count == 1, let image = images.first, isSettled(image)
+        guard images.count == 1, let image = images.first, !image.isDisabled
         else { return nil }
 
         return image
@@ -97,20 +70,14 @@ struct ImagesView: View {
     private var rowActions: TableRowActions<ImageItem> {
         TableRowActions(
             noun: "Image",
-            name: { "\($0.name):\($0.tag)" },
-            canOpen: { !$0.isPending },
+            name: \.displayName,
             open: openDetails(for:),
             // Not an image a container was made from.
-            canDelete: { image in
-                image.isPending
-                    ? image.activity?.hasEnded ?? true
-                    : isSettled(image) && !image.isInUse
-            },
-            deletesWithoutAsking: \.isPending,
+            canDelete: { !$0.isExecuting && ($0.isPending || !$0.isInUse) },
             delete: deleteImages,
             canStart: { runnable($0) != nil },
             start: { run(runnable($0)) },
-            pendingWork: { $0.isPending ? $0.activity : nil }
+            pendingWork: \.pendingWork
         )
     }
 
@@ -134,30 +101,23 @@ struct ImagesView: View {
             }
         ) {
             TableColumn("Name", value: \.name) { image in
-                HStack(spacing: 4) {
-                    Text(image.name)
-                        .lineLimit(1)
-                        .foregroundStyle(
-                            image.isPending ? .secondary : .primary
-                        )
-
-                    if let activity = image.activity {
-                        Spacer(minLength: 0)
-
-                        RowProgressIndicator(
-                            activity: activity,
-                            activityCenter: activityCenter,
-                            openReport: openWindow.report
-                        )
-                    }
-                }
+                ActivityRowName(
+                    row: image,
+                    activityCenter: activityCenter,
+                    openReport: openWindow.report
+                )
             }
             .width(min: 150, ideal: 180)
 
             TableColumn("Tag", value: \.tag) { image in
-                Text(image.tag)
-                    .lineLimit(1)
-                    .foregroundStyle(image.isPending ? .secondary : .primary)
+                if image.hasTag {
+                    Text(image.tag)
+                        .lineLimit(1)
+                        .rowForeground(for: image)
+                } else {
+                    Text("—")
+                        .foregroundStyle(.secondary)
+                }
             }
             .width(min: 22, ideal: 30)
 
@@ -166,6 +126,7 @@ struct ImagesView: View {
                     Text(image.indexDigest.trimmedDigest)
                         .lineLimit(1)
                         .font(.system(.body, design: .monospaced))
+                        .rowForeground(for: image)
                         .textSelection(.enabled)
                 } else {
                     Text("—")
@@ -207,12 +168,6 @@ struct ImagesView: View {
         let imageManager = imageManager
 
         for image in images {
-            // A row that only stands for failed work is that work.
-            if image.isPending, let activity = image.activity {
-                activityCenter.remove(activity.id)
-                continue
-            }
-
             let description = image.imageDescription
 
             activityCenter.run(

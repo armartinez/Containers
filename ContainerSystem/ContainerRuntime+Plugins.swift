@@ -29,16 +29,12 @@ extension ContainerRuntime {
         let processKey = "\(plugin.name).\(instanceId)"
 
         // Check if already running
-        if let existing = pluginProcesses[processKey],
-            existing.process.isRunning
-        {
+        if let existing = pluginProcesses[processKey], existing.process.isRunning {
             logger.info("Plugin already running: \(processKey)")
             return
         }
 
-        logger.info(
-            "Starting plugin process: \(plugin.name) with instanceId: \(instanceId)"
-        )
+        logger.info("Starting plugin process: \(plugin.name) with instanceId: \(instanceId)")
         logger.info("Binary path: \(plugin.binaryURL.path)")
         logger.info("Arguments: \(args)")
 
@@ -94,9 +90,8 @@ extension ContainerRuntime {
 
         do {
             try process.run()
-            logger.info(
-                "Plugin process started with PID: \(process.processIdentifier)"
-            )
+
+            logger.info("Plugin process started with PID: \(process.processIdentifier)")
 
             pluginProcesses[processKey] = PluginProcessInfo(
                 process: process,
@@ -108,7 +103,6 @@ extension ContainerRuntime {
 
             // Give the process a moment to start up and create its XPC server
             try await Task.sleep(for: .milliseconds(500))
-
         } catch {
             logger.error("Failed to start plugin process: \(error)")
             throw ContainerizationError(
@@ -148,9 +142,7 @@ extension ContainerRuntime {
     }
 
     /// Check if a plugin is running
-    func isPluginRunning(pluginName: String, instanceId: String)
-        -> Bool
-    {
+    func isPluginRunning(pluginName: String, instanceId: String) -> Bool {
         let processKey = "\(pluginName).\(instanceId)"
 
         guard let info = pluginProcesses[processKey] else {

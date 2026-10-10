@@ -328,7 +328,8 @@ struct ContainerDetailView: View {
             on: id,
             kind: .container,
             subtitle: container.imageName,
-            failureTitle: "The container couldn’t be started."
+            failureTitle: "The container couldn’t be started.",
+            showsProgress: false
         ) {
             try await containerManager.run(id: id)
         }
@@ -343,7 +344,8 @@ struct ContainerDetailView: View {
             on: id,
             kind: .container,
             subtitle: container.imageName,
-            failureTitle: "The container couldn’t be stopped."
+            failureTitle: "The container couldn’t be stopped.",
+            showsProgress: false
         ) {
             try await containerManager.stop(ids: [id], timeoutSeconds: timeout)
         }

@@ -13,6 +13,7 @@ import TipKit
 struct DetailToolbarItem: Identifiable {
     let id: String
     let title: String
+    /// A system symbol, or a symbol in the asset catalog.
     let icon: String
     let help: String
     let isEnabled: Bool
@@ -21,7 +22,6 @@ struct DetailToolbarItem: Identifiable {
     /// because changing a toolbar's items after the window opens
     /// fights AppKit as it lays them out.
     let isHidden: Bool
-    let badgeCount: Int?
     let tip: AnyTip?
     let action: () -> Void
 
@@ -33,7 +33,6 @@ struct DetailToolbarItem: Identifiable {
         isEnabled: Bool = true,
         isHidden: Bool = false,
         isLeading: Bool = false,
-        badgeCount: Int? = nil,
         tip: AnyTip? = nil,
         action: @escaping () -> Void
     ) {
@@ -44,16 +43,15 @@ struct DetailToolbarItem: Identifiable {
         self.isEnabled = isEnabled
         self.isHidden = isHidden
         self.isLeading = isLeading
-        self.badgeCount = badgeCount
         self.tip = tip
         self.action = action
     }
 }
 
 extension DetailToolbarItem {
-    /// The Reports item every detail window leads with: a badge with the
-    /// unread reports about the window's subject, opening the Reports section
-    /// filtered to it.
+    /// The Reports item every detail window leads with: badged with a red dot while
+    /// there are unread reports about the window's subject, opening the Reports
+    /// section filtered to it.
     ///
     /// `kinds` are what the subject can be reported as. An image is reported
     /// both as an image and as a build.
@@ -64,19 +62,19 @@ extension DetailToolbarItem {
         openURL: OpenURLAction
     ) -> DetailToolbarItem {
         let reports = manager.reports(named: name, ofKind: kinds)
-        let unread = reports.count { !$0.isRead }
+        let hasUnread = reports.contains { !$0.isRead }
 
         // Disabled rather than hidden when there's nothing to show: an item
         // that comes and goes changes the toolbar's items under AppKit.
         return DetailToolbarItem(
             id: "report",
             title: "Reports",
-            icon: "list.bullet.clipboard",
+            // The same clipboard with a red badge, from the asset catalog.
+            icon: hasUnread ? "list.clipboard.badge" : "list.clipboard",
             help: reports.isEmpty
                 ? "Nothing reported" : "Show reports for \(name)",
             isEnabled: !reports.isEmpty,
-            isLeading: true,
-            badgeCount: unread
+            isLeading: true
         ) {
             openURL(AppLink.reports(name: name).url)
         }
@@ -88,7 +86,7 @@ extension DetailToolbarItem {
         DetailToolbarItem(
             id: "report",
             title: "Reports",
-            icon: "list.bullet.clipboard",
+            icon: "list.clipboard",
             isEnabled: false,
             isHidden: true,
             isLeading: true

@@ -11,11 +11,11 @@ import SwiftUI
 
 /// The system's status; clicking it opens the same actions as the menu bar item.
 struct SystemStatusControl: View {
-    @Binding var errorAlert: ErrorAlert?
-
     @Environment(SystemManager.self) private var system
     @Environment(SystemActions.self) private var systemActions
     @Environment(\.openWindow) private var openWindow
+
+    @Binding var errorAlert: ErrorAlert?
 
     @State private var isHovering = false
     @State private var anchor = MenuAnchor.Holder()
@@ -24,17 +24,17 @@ struct SystemStatusControl: View {
     var body: some View {
         Button(action: showMenu) {
             HStack(spacing: 4) {
-                // Fixed width, so the text doesn't shift as the symbol changes.
                 Image(systemName: system.status.symbol)
                     .foregroundStyle(system.status.color)
                     .frame(width: 13)
 
                 Text(system.status.message)
                     .foregroundStyle(system.status.color)
-
-                // Shown on hover; hidden rather than removed, so the text doesn't shift.
+            }
+            .overlay(alignment: .trailing) {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 7, weight: .semibold))
+                    .alignmentGuide(.trailing) { $0[HorizontalAlignment.center] - 7.5 }
                     .opacity(isHovering ? 1 : 0)
             }
             .font(.subheadline)

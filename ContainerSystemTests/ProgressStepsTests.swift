@@ -126,11 +126,44 @@ struct ProgressStepsTests {
 
         #expect(progress.fractionCompleted == 0.5)
 
-        await update([.addTotalSize(1000), .addSize(100)])
+        await update([.addTotalSize(10_000_000), .addSize(1_000_000)])
 
         #expect(progress.kind == .file)
-        #expect(progress.totalUnitCount == 1000)
-        #expect(progress.fractionCompleted == 0.1)
+        #expect(progress.totalUnitCount == 10_000_000)
+        #expect(progress.fractionCompleted == 0.55)
+    }
+
+    @Test("Staged totals never move progress back")
+    func stagedTotalsStayMonotonic() async throws {
+        let progress = Progress(totalUnitCount: 1)
+        var fractions: [Double] = []
+
+        try await progress.performStep("Fetching image") { step in
+            let update = step.updateHandler()
+            // How an image pull reports: the index, then a manifest per platform, then the configs and layers.
+            let batches: [[ProgressEvent]] = [
+                [.addTotalSize(10_000), .addTotalItems(1)],
+                [.addSize(10_000), .addItems(1)],
+                [.addTotalSize(30_000), .addTotalItems(3)],
+                [.addSize(10_000), .addItems(1)],
+                [.addSize(10_000), .addItems(1)],
+                [.addSize(10_000), .addItems(1)],
+                [.addTotalSize(4_000_000), .addTotalItems(2)],
+                [.addSize(1_000_000)],
+                [.addSize(2_000_000)],
+                [.addSize(1_000_000), .addItems(2)],
+            ]
+
+            for batch in batches {
+                await update(batch)
+                fractions.append(progress.fractionCompleted)
+            }
+        }
+
+        #expect(fractions == fractions.sorted())
+        #expect(fractions[0...6].allSatisfy { $0 == 0 })
+        #expect(fractions[8] == 0.75)
+        #expect(progress.fractionCompleted == 1)
     }
 
     @Test("Counts without a total stay indeterminate")

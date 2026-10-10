@@ -140,13 +140,29 @@ extension UserDefaults {
         applicationDataRootBookmarkData = nil
     }
 
+    /// Whether What's New hasn't been dismissed yet. `lastSeenVersion` is empty
+    /// until it is; anything that isn't a version counts the same.
+    static var isFirstLaunch: Bool {
+        AppVersion(lastSeenVersion) == nil
+    }
+
+    /// Whether the user hasn't dismissed What's New since the version in the
+    /// Info.plist was installed. After an update, only when the release
+    /// announces its features.
     static var shouldShowWhatsNew: Bool {
-        let current = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
-        return lastSeenVersion != current
+        guard let current = AppVersion(Bundle.main.shortVersion) else {
+            return false
+        }
+
+        guard let lastSeen = AppVersion(lastSeenVersion) else {
+            return true
+        }
+
+        return AppInfo.showsUpdateFeatures && current > lastSeen
     }
 
     static func markCurrentVersionSeen() {
-        lastSeenVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+        lastSeenVersion = Bundle.main.shortVersion
     }
 
     private static var resolverDirectoryBookmarkData: Data? {

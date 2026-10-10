@@ -35,7 +35,7 @@ enum NavigationTab: String, Identifiable, Equatable {
         case .volumes:
             "internaldrive"
         case .reports:
-            "list.bullet.clipboard"
+            "list.clipboard"
         }
     }
 

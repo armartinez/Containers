@@ -20,7 +20,7 @@ struct DashboardView: View {
 
     @SwiftUI.State private var errorAlert: ErrorAlert?
 
-    @SwiftUI.State private var isFirstLaunch: Bool = UserDefaults.lastSeenVersion.isEmpty
+    @SwiftUI.State private var isFirstLaunch: Bool = UserDefaults.isFirstLaunch
     @SwiftUI.State private var didCancelSetup: Bool = false
     @SwiftUI.State private var showWhatsNew: Bool = UserDefaults.shouldShowWhatsNew
     @SwiftUI.State private var showSystemSetup: Bool = false
@@ -248,7 +248,7 @@ struct DashboardView: View {
                         showSystemSetup = isFirstLaunch || isMakingFolderReady
                     },
                     content: {
-                        WhatsNewView(isFirstLaunch: isFirstLaunch) {
+                        WhatsNewView {
                             UserDefaults.markCurrentVersionSeen()
                             showWhatsNew = false
                         }

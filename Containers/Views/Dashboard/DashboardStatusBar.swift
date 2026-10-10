@@ -28,8 +28,7 @@ struct DashboardStatusBar: View {
     }
 
     var body: some View {
-        // Tighter than it looks: the status keeps room for its hover chevron.
-        HStack(spacing: 8) {
+        HStack(spacing: 16) {
             SystemStatusControl(errorAlert: $errorAlert)
 
             Divider()
@@ -41,7 +40,6 @@ struct DashboardStatusBar: View {
                 reading("internaldrive", String(format: "%.2f GB", usage.diskUsage))
             }
             .foregroundStyle(.secondary)
-            .padding(.leading, 8)
 
             Spacer()
         }

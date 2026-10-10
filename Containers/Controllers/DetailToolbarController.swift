@@ -225,14 +225,12 @@ final class DetailToolbarController: NSObject, NSToolbarDelegate {
         let title: String
         let help: String
         let icon: String
-        let badgeCount: Int?
         let isHidden: Bool
 
         init(_ detailItem: DetailToolbarItem) {
             self.title = detailItem.title
             self.help = detailItem.help
             self.icon = detailItem.icon
-            self.badgeCount = detailItem.badgeCount
             self.isHidden = detailItem.isHidden
         }
     }
@@ -251,17 +249,21 @@ final class DetailToolbarController: NSObject, NSToolbarDelegate {
         item.toolTip = detailItem.help
         item.isHidden = detailItem.isHidden
 
-        item.image = NSImage(
-            systemSymbolName: detailItem.icon,
-            accessibilityDescription: detailItem.title
-        )
+        item.image = image(for: detailItem)
+    }
 
-        // AppKit's badge; drawn into the image, it would shrink the symbol.
-        if let count = detailItem.badgeCount, count > 0 {
-            item.badge = .count(count)
-        } else {
-            item.badge = nil
+    /// A system symbol, or else a badged one from the asset catalog.
+    ///
+    /// Badged symbols draw their badge, the primary layer, in red and the rest
+    /// in the label color. Multicolor would draw the rest too dark in Dark Mode.
+    private func image(for detailItem: DetailToolbarItem) -> NSImage? {
+        if let symbol = NSImage(systemSymbolName: detailItem.icon, accessibilityDescription: detailItem.title) {
+            return symbol
         }
+
+        let symbol = NSImage(named: detailItem.icon)
+        symbol?.accessibilityDescription = detailItem.title
+        return symbol?.withSymbolConfiguration(.init(paletteColors: [.systemRed, .labelColor]))
     }
 
     // MARK: - NSToolbarDelegate
