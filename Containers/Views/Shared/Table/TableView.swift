@@ -32,6 +32,36 @@ struct TableRowActions<Row> {
     /// Such a row has nothing to show details of, and deleting it removes
     /// the work without asking, as there is nothing behind it to lose.
     var pendingWork: (Row) -> ActivitySnapshot? = { _ in nil }
+    /// The failure marked on a row, which the toolbar can clear.
+    var failure: (Row) -> ActivitySnapshot? = { _ in nil }
+}
+
+extension TableRowActions where Row: ActivityRow {
+    /// Rows that work can be under way on say for themselves what work they
+    /// stand in for and what failure is marked on them.
+    init(
+        noun: String,
+        name: @escaping (Row) -> String,
+        open: @escaping (Row) -> Void,
+        canDelete: @escaping (Row) -> Bool = { _ in true },
+        delete: @escaping ([Row]) -> Void,
+        canStart: @escaping ([Row]) -> Bool = { _ in false },
+        start: @escaping ([Row]) -> Void = { _ in },
+        canStop: @escaping ([Row]) -> Bool = { _ in false },
+        stop: @escaping ([Row]) -> Void = { _ in }
+    ) {
+        self.noun = noun
+        self.name = name
+        self.open = open
+        self.canDelete = canDelete
+        self.delete = delete
+        self.canStart = canStart
+        self.start = start
+        self.canStop = canStop
+        self.stop = stop
+        self.pendingWork = \.pendingWork
+        self.failure = \.failure
+    }
 }
 
 struct TableView<Row, Columns, Menu>: View
@@ -297,7 +327,9 @@ where
             canShowDetails: detailsTarget(in: selection) != nil,
             canStart: rowActions.canStart(selected),
             canStop: rowActions.canStop(selected),
-            canDelete: !deletableRows(in: selection).isEmpty
+            canDelete: !deletableRows(in: selection).isEmpty,
+            // Every row on show, not only the selected ones.
+            failures: rows.compactMap(rowActions.failure)
         )
     }
 
@@ -394,6 +426,8 @@ struct SelectionActions: Equatable {
     var canStart = false
     var canStop = false
     var canDelete = false
+    /// The failures marked on the rows the table shows, for the toolbar to clear.
+    var failures: [ActivitySnapshot] = []
 }
 
 /// A toolbar button pressed, for the view that has the rows to act on.

@@ -131,12 +131,10 @@ struct DashboardView: View {
                 enabledSelectionItems: selectionActions.enabledItems,
                 searchText: searchText,
                 // Report filters as tokens; Return turns typed text into one.
-                searchTokens: selectedTab == .reports
-                    ? reportFilters.map(\.token) : [],
+                searchTokens: selectedTab == .reports ? reportFilters.map(\.token) : [],
                 onDeleteSearchTokens: { reportFilters.remove(atOffsets: $0) },
                 onChooseSearchTokenOption: { index, title in
                     guard reportFilters.indices.contains(index) else { return }
-
                     reportFilters[index] = reportFilters[index].choosing(title)
                 },
                 onSubmitSearch: selectedTab == .reports
@@ -280,32 +278,19 @@ struct DashboardView: View {
         }
     }
 
-    /// The unread reports behind the section's marks.
-    private var unreadReports: [String] {
-        guard let kinds = selectedTab.reportKinds else { return [] }
+    /// Whether a row on show is marked; a report with no row showing it doesn't count.
+    private var hasErrors: Bool { !selectionActions.failures.isEmpty }
 
-        return reportManager.reports
-            .filter { kinds.contains($0.kind) && !$0.isRead }
-            .map(\.id)
-    }
-
-    /// Whether the section on show is marked anywhere.
-    private var hasErrors: Bool {
-        guard let kind = selectedTab.activityKind else { return false }
-
-        return !unreadReports.isEmpty
-            || activityCenter.hasUnreportedFailures(ofKind: kind)
-    }
-
-    /// Clears the section's marks by marking their reports read; the reports
-    /// stay in Reports.
+    /// Clears the marks on show by marking their reports read; the reports stay in Reports.
     private func clearErrors() {
-        guard let kind = selectedTab.activityKind else { return }
+        let failures = selectionActions.failures
 
         // A failure that left no report cannot be read, so it is let go of.
-        activityCenter.forgetUnreportedFailures(ofKind: kind)
+        for failure in failures where failure.reportID == nil {
+            activityCenter.remove(failure.id)
+        }
 
-        let ids = unreadReports
+        let ids = failures.compactMap(\.reportID)
 
         guard !ids.isEmpty else { return }
 
@@ -326,5 +311,4 @@ struct DashboardView: View {
             break
         }
     }
-
 }

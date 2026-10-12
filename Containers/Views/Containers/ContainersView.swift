@@ -89,8 +89,7 @@ struct ContainersView: View {
             canStart: { !startable($0).isEmpty },
             start: { startContainers(startable($0)) },
             canStop: { !stoppable($0).isEmpty },
-            stop: { stopContainers(stoppable($0)) },
-            pendingWork: \.pendingWork
+            stop: { stopContainers(stoppable($0)) }
         )
     }
 

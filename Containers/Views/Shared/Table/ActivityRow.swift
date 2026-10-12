@@ -17,29 +17,16 @@ nonisolated protocol ActivityRow: Identifiable where ID == String {
 
 extension ActivityRow {
     var isPending: Bool { false }
-
     /// Whether an action is under way on the row.
-    var isExecuting: Bool {
-        activity?.isExecuting == true
-    }
-
-    /// Nothing can be done with a row while an action executes on it. One
-    /// whose last action failed can be acted on, so it can be tried again.
-    var isDisabled: Bool {
-        isPending || isExecuting
-    }
-
+    var isExecuting: Bool { activity?.isExecuting == true }
+    var isDisabled: Bool { isPending || isExecuting }
     /// The work the row only stands in for, whose own menu it gets instead.
-    var pendingWork: ActivitySnapshot? {
-        isPending ? activity : nil
-    }
-}
+    var pendingWork: ActivitySnapshot? { isPending ? activity : nil }
 
-extension View {
-    /// Shows a cell's content as secondary while nothing can be done with its
-    /// row, or while `isDimmed` holds.
-    func rowForeground(for row: some ActivityRow, isDimmed: Bool = false) -> some View {
-        foregroundStyle(row.isDisabled || isDimmed ? .secondary : .primary)
+    /// The failure marked on the row, reported or not.
+    var failure: ActivitySnapshot? {
+        guard let activity, case .failed = activity.phase else { return nil }
+        return activity
     }
 }
 

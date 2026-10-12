@@ -76,8 +76,7 @@ struct ImagesView: View {
             canDelete: { !$0.isExecuting && ($0.isPending || !$0.isInUse) },
             delete: deleteImages,
             canStart: { runnable($0) != nil },
-            start: { run(runnable($0)) },
-            pendingWork: \.pendingWork
+            start: { run(runnable($0)) }
         )
     }
 

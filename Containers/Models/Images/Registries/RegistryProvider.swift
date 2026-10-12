@@ -31,7 +31,7 @@ nonisolated struct RegistryRequest<Response>: Sendable {
 ///
 /// A request is nil where the registry has nothing to ask for it.
 nonisolated protocol RegistryProvider: Sendable {
-    var trendingImages: RegistryRequest<[ImageSuggestion]>? { get }
+    var featuredImages: RegistryRequest<[ImageSuggestion]>? { get }
 
     func imageSearch(matching text: String) -> RegistryRequest<[String]>?
     func tagSearch(for imageName: String, matching text: String) -> RegistryRequest<[String]>?

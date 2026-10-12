@@ -204,16 +204,6 @@ final class ActivityCenter {
         }
     }
 
-    /// Writing a report can fail, and a mark with none behind it can never be
-    /// read away; clearing is the only way to be rid of it.
-    func hasUnreportedFailures(ofKind kind: Kind) -> Bool {
-        activities.contains(where: isUnreportedFailure(ofKind: kind))
-    }
-
-    func forgetUnreportedFailures(ofKind kind: Kind) {
-        activities.removeAll(where: isUnreportedFailure(ofKind: kind))
-    }
-
     /// A failure's mark leads to its report, so once that is read it goes.
     private func isSpent(_ activity: Activity) -> Bool {
         guard activity.error != nil, let reportID = activity.reportID else {
@@ -221,10 +211,6 @@ final class ActivityCenter {
         }
 
         return reports.isRead(reportID)
-    }
-
-    private func isUnreportedFailure(ofKind kind: Kind) -> (Activity) -> Bool {
-        { $0.kind == kind && $0.error != nil && $0.reportID == nil }
     }
 
     private func activity(_ id: String) -> Activity? {

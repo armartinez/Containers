@@ -49,16 +49,6 @@ enum NavigationTab: String, Identifiable, Equatable {
         }
     }
 
-    /// An image is reported against as both an image and a build.
-    var reportKinds: Set<Report.Kind>? {
-        switch self {
-        case .containers: [.container]
-        case .images: [.image, .build]
-        case .volumes: [.volume]
-        case .reports: nil
-        }
-    }
-
     var id: String {
         self.rawValue
     }

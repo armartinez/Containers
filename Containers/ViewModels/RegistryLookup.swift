@@ -28,9 +28,7 @@ final class RegistryLookup {
         let provider = registry.provider
         var images: [ImageSuggestion] = []
 
-        if let request = provider.trendingImages,
-            let current = try? await Self.perform(request)
-        {
+        if let request = provider.featuredImages, let current = try? await Self.perform(request) {
             images = current
         }
 

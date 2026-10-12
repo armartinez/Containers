@@ -136,7 +136,7 @@ struct PullImageView: View {
             VStack(spacing: 10) {
                 HStack {
                     Spacer()
-                    Text("Trending this week on \(registry.description)")
+                    Text("Popular on \(registry.description)")
                         .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundStyle(.primary)
@@ -204,7 +204,6 @@ struct PullImageView: View {
             .suggestions(for: isImageNameFieldFocused ? imageName : nil) {
                 [registryLookup, registry] text in
                 try await registryLookup.images(matching: text, on: registry)
-                    .filter { $0 != text }
             }
             .textFieldStyle(.roundedBorder)
             .labelsHidden()
