@@ -13,7 +13,7 @@ on:
 
 jobs:
   buildAndTest:
-    name: Build and Test repo
+    name: Build and Test
     if: github.repository == 'try-containers/Containers'
     timeout-minutes: 60
     runs-on: macos-26
@@ -42,7 +42,7 @@ jobs:
             -project Containers.xcodeproj \
             -scheme "Containers (macOS)"
 
-      - name: Build Containers
+      - name: Build 
         run: |
           set -o pipefail
           xcodebuild build \
@@ -52,7 +52,7 @@ jobs:
             -destination 'platform=macOS' \
             CODE_SIGNING_ALLOWED=NO
 
-      - name: Test ContainerSystem
+      - name: Test 
         run: |
           set -o pipefail
           xcodebuild test \
