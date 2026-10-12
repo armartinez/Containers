@@ -58,7 +58,6 @@ struct BarToggle: View {
     }
 
     private var pressed: Color {
-        // Between quaternary (the hover) and tertiary, which reads as a stain.
         isOn ? background : Color(nsColor: .tertiaryLabelColor).opacity(0.6)
     }
 
@@ -86,7 +85,6 @@ struct BarToggle: View {
         Toggle(title, isOn: $isOn)
             .toggleStyle(.button)
             .buttonStyle(.accessoryBar)
-            // Accessory bar buttons are 4pt taller than the filter field; small matches it.
             .controlSize(.small)
     }
 
@@ -119,11 +117,8 @@ struct BarToggle: View {
             }
         }
 
-        // Unselected tabs keep a fill instead of a hover effect, so every
-        // destination stays visible without pointing at it.
-        guard manner != .tab else { return Color(nsColor: .quinaryLabelColor) }
+        guard manner != .tab else { return Color(nsColor: .quinaryLabel) }
 
-        // Lighter than the press, so hovering reads as less than choosing.
         return isHovered ? Color(nsColor: .quaternaryLabelColor) : .clear
     }
 }

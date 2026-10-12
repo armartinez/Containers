@@ -104,7 +104,7 @@ private struct OutlinedBarButtonStyle: ButtonStyle {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: OutlinedBarButtonStyle.cornerRadius)
-                        .strokeBorder(Color(nsColor: .quinaryLabelColor))
+                        .strokeBorder(Color(nsColor: .quinaryLabel))
                 )
                 .contentShape(Rectangle())
                 .onHover { isHovered = $0 }
