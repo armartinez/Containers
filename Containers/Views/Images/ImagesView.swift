@@ -5,269 +5,197 @@
 //  Created by Axel Martinez on 2026/02/05.
 //
 
-import SwiftUI
 import ContainerSystem
-import ContainerResource
+import Containerization
+import ContainerizationOCI
+import SwiftUI
+import TipKit
 
 struct ImagesView: View {
-    @Environment(ContainerManager.self) private var containerManager
     @Environment(ImageManager.self) private var imageManager
-    @Environment(SystemManager.self) private var system
+    @Environment(ActivityCenter.self) private var activityCenter
+    @Environment(\.openWindow) private var openWindow
 
     @Binding var searchText: String
+    @Binding var selection: Set<ImageItem.ID>
+    @Binding var actions: SelectionActions
+    @Binding var command: SelectionCommand?
+
     var refreshTrigger: Int
 
-    var onRefresh: (() async -> Void)? = nil
+    private let runContainerTip = RunContainerTip()
 
-    @State private var images: [ImageViewModel] = []
-    @State private var lastUpdated: Date? = nil
-    @State private var createContainerForImage: ImageViewModel? = nil
-    @State private var imagesToSave: String =  ""
-    @State private var imageToDelete: ImageViewModel?
-    @State private var error: Error?
-    @State private var showError: Bool = false
-    @State private var showDeleteConfirmation: Bool = false
-    @State private var showInUseContainerForImage: ImageViewModel?
-    @State private var showSaveImageView: Bool = false
-    @State private var showImageDetails: ImageViewModel?
+    @SwiftUI.State private var images: [ImageItem] = []
+    @SwiftUI.State private var imageToRun: ImageItem? = nil
 
     private var trimmedText: String {
         self.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
-    
-    private var filteredImages: [ImageViewModel] {
+
+    /// An image still on its way gets a row of its own, keyed by the reference
+    /// it will have, so it becomes that row in place when it lands.
+    private var allImages: [ImageItem] {
+        activityCenter.marked(
+            images,
+            ofKind: .image,
+            // Builds and pulls are both reported against the image.
+            reportName: { $0.imageDescription.reference },
+            reportKinds: [.image, .build],
+            pendingRow: ImageItem.init(pending:)
+        )
+    }
+
+    private var filteredImages: [ImageItem] {
+        let all = allImages
+
         if trimmedText.isEmpty {
-            return images
+            return all
         }
-        
-        let filtered = self.images.filter({
-            $0.name.contains(trimmedText) ||
-            $0.tag.contains(trimmedText)
+
+        let filtered = all.filter({
+            $0.name.contains(trimmedText) || $0.tag.contains(trimmedText)
         })
-        
+
         return filtered
     }
-    
+
+    /// Running asks for a container's settings, so it is one image at a time.
+    private func runnable(_ images: [ImageItem]) -> ImageItem? {
+        guard images.count == 1, let image = images.first, !image.isDisabled
+        else { return nil }
+
+        return image
+    }
+
+    private var rowActions: TableRowActions<ImageItem> {
+        TableRowActions(
+            noun: "Image",
+            name: \.displayName,
+            open: openDetails(for:),
+            // Not an image a container was made from.
+            canDelete: { !$0.isExecuting && ($0.isPending || !$0.isInUse) },
+            delete: deleteImages,
+            canStart: { runnable($0) != nil },
+            start: { run(runnable($0)) }
+        )
+    }
 
     var body: some View {
-        VStack(alignment: .leading , spacing: 0) {
-            Table(of: ImageViewModel.self, columns: {
-                TableColumn("Name") { image in
-                    Button(action: {
-                        self.showImageDetails = image
-                    }) {
-                        Text(image.name)
-                            .font(.headline)
-                            .lineLimit(1)
-                            .underline()
-                    }
-                    .buttonStyle(.link)
-                    .frame(height: 48)
+        TableView(
+            rows: filteredImages,
+            selection: $selection,
+            sortOrder: [KeyPathComparator(\.name), KeyPathComparator(\.tag)],
+            actions: $actions,
+            command: $command,
+            rowActions: rowActions,
+            refreshTrigger: refreshTrigger,
+            activityKind: .image,
+            onClear: { images = [] },
+            onRefresh: listImages,
+            menu: { selected in
+                Button("Run Container…", systemImage: "play") {
+                    run(runnable(selected))
                 }
-                .width(min: 60, ideal: 80)
-                
-                TableColumn("Tag") { image in
+                .disabled(runnable(selected) == nil)
+            }
+        ) {
+            TableColumn("Name", value: \.name) { image in
+                ActivityRowName(
+                    row: image,
+                    activityCenter: activityCenter,
+                    openReport: openWindow.report
+                )
+            }
+            .width(min: 150, ideal: 180)
+
+            TableColumn("Tag", value: \.tag) { image in
+                if image.hasTag {
                     Text(image.tag)
                         .lineLimit(1)
+                        .rowForeground(for: image)
+                } else {
+                    Text("—")
+                        .foregroundStyle(.secondary)
                 }
-                .width(min: 50, ideal: 60)
+            }
+            .width(min: 22, ideal: 30)
 
-                TableColumn("Digest") { image in
-                    Text(image.formattedDigest)
+            TableColumn("Digest", value: \.indexDigest) { image in
+                if !image.isPending {
+                    Text(image.indexDigest.trimmedDigest)
                         .lineLimit(1)
                         .font(.system(.body, design: .monospaced))
+                        .rowForeground(for: image)
                         .textSelection(.enabled)
+                } else {
+                    Text("—")
+                        .foregroundStyle(.secondary)
                 }
-                .width(min: 250, ideal: 400)
-
-                TableColumn("State") { image in
-                    
-                    Group {
-                        if image.inUse {
-                            Button(action: {
-                                showInUseContainerForImage = image
-                            }, label: {
-                                Text("In use")
-                                    .lineLimit(1)
-                                    .underline()
-
-                            })
-                            .buttonStyle(.link)
-                        } else {
-                            Text("Unused")
-                        }
-                    }
-                    .lineLimit(1)
-
-                }
-                .width(min: 60, ideal: 70)
-
-                TableColumn("Actions") { image in
-
-                    HStack(spacing: 12) {
-                        
-                        Button(action: {
-                            self.createContainerForImage = image
-                        }, label: {
-                            Image(systemName: "cube.fill")
-                                .foregroundStyle(.blue)
-                        })
-                        .buttonStyle(.plain)
-                        .help("Create container from image")
-                        
-                        Button(action: {
-                            self.imagesToSave = image.imageDescription.reference
-                            self.showSaveImageView = true
-                        }, label: {
-                            Image(systemName: "folder.fill")
-                                .foregroundStyle(.blue)
-                        })
-                        .buttonStyle(.plain)
-                        .help("Save image")
-
-                        Button(action: {
-                            imageToDelete = image
-                            showDeleteConfirmation = true
-                        }, label: {
-                            Image(systemName: "trash.fill")
-                                .foregroundStyle(image.inUse ? .secondary : Color.red)
-                        })
-                        .disabled(image.inUse)
-                        .buttonStyle(.plain)
-                        .help("Delete image")
-
-                    }
-                    .padding(.horizontal, 8)
-                }
-                .width(128)
-                
-
-            }, rows: {
-                ForEach(filteredImages)
-            })
-            .tableStyle(.inset)
-            .alternatingRowBackgrounds(.disabled)
-            .overlay(alignment: .center, content: {
-                if !self.system.isRunning {
-                    ContainerSystemView()
-                } else if filteredImages.isEmpty {
-                    ContentUnavailableView(
-                        trimmedText.isEmpty ? "No Images Found" : "No Matching Images",
-                        systemImage: NavigationTab.images.icon
-                    )
-                }
-            })
+            }
+            .width(min: 150, ideal: 200, max: 250)
         }
-        .onChange(of: self.system.isRunning, initial: true, {
-            guard self.system.isRunning else {
-                self.images = []
-                self.lastUpdated = nil
-                return
+        .sheet(
+            item: $imageToRun,
+            onDismiss: {
+                Task { try? await listImages() }
+            },
+            content: { image in
+                CreateContainerView(
+                    imageReference: image.imageDescription.reference,
+                    mode: .run
+                )
             }
-            
-            Task {
-                guard self.lastUpdated == nil else {
-                    return
-                }
-                
-                await self.listImages()
-            }
-        })
-        .onChange(of: refreshTrigger) {
-            Task {
-                await self.listImages()
-            }
-        }
-        .onAppear {
-            Task {
-                guard system.isRunning else { return }
-                await self.listImages()
-            }
-        }
-        .sheet(item: $createContainerForImage, onDismiss: {
-            Task {
-                await self.listImages()
-            }
-        }, content: { image in
-            CreateContainerView(imageReference: image.imageDescription.reference)
-        })
-        .sheet(item: $showInUseContainerForImage, content: { image in
-            ImageContainersView(containers: image.inUseContainers.map({ContainerViewModel($0)}))
-        })
-        .sheet(item: $showImageDetails, content: { image in
-            ImageDetailView(image: image)
-        })
-        .sheet(isPresented: $showSaveImageView, onDismiss: {
-            self.imagesToSave = ""
-        }, content: {
-            SaveImageView(images: self.images.map(\.imageDescription), imageReferences: $imagesToSave)
-        })
-        .alert("Error", isPresented: $showError, actions: {
-            Button("OK") {
-                self.showError = false
-            }
-        }, message: {
-            if let error = error {
-                Text(error.localizedDescription)
-            }
-        })
-        .confirmationDialog(
-            "Delete Image?",
-            isPresented: $showDeleteConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Delete", role: .destructive) {
-                guard let image = imageToDelete else {
-                    return
-                }
-                
-                Task {
-                    do {
-                        try await imageManager.delete(images: [image.imageDescription])
-                        
-                        await self.listImages()
-                    } catch (let err) {
-                        self.error = err
-                        self.showError = true
-                    }
-                }
-                
-                imageToDelete = nil
-            }
-            
-            Button("Cancel", role: .cancel) {
-                imageToDelete = nil
-            }
-        } message: {
-            if let image = imageToDelete {
-                Text("Delete \(image.name):\(image.tag)? This cannot be undone.")
+        )
+    }
+
+    private func openDetails(for image: ImageItem) {
+        openWindow(
+            id: ContainersApp.imageDetailWindowID,
+            value: image.imageDescription.reference
+        )
+    }
+
+    private func run(_ image: ImageItem?) {
+        guard let image else { return }
+
+        runContainerTip.invalidate(reason: .actionPerformed)
+        imageToRun = image
+    }
+
+    /// Run as row work, so a failure shows in the row like a pull's.
+    private func deleteImages(_ images: [ImageItem]) {
+        let imageManager = imageManager
+
+        for image in images {
+            let description = image.imageDescription
+
+            activityCenter.run(
+                on: image.id,
+                kind: .image,
+                failureTitle: "The image couldn’t be deleted."
+            ) {
+                try await imageManager.delete(images: [description])
             }
         }
     }
 
-    func listImages() async {
-        do {
-            let containers = try await containerManager.list()
-            let images = try await imageManager.list()
-
-            // Create display models from ImageDescription
-            let displayModels = images
-                .map { ImageViewModel($0, containers: containers) }
-                .sorted { ($0.name, $0.tag) < ($1.name, $1.tag) }
-
-            self.images = displayModels
-            self.lastUpdated = Date()
-
-        } catch(let err) {
-            self.error = err
-            self.showError = true
-        }
+    func listImages() async throws {
+        images = try await imageManager.list(platform: .current)
+            .map(ImageItem.init)
     }
 }
 
 #Preview {
+    let reportManager = ReportManager()
+
     ImagesView(
         searchText: .constant(""),
+        selection: .constant([]),
+        actions: .constant(SelectionActions()),
+        command: .constant(nil),
         refreshTrigger: 0
     )
+    .environment(ContainerManager())
+    .environment(ActivityCenter(reports: reportManager))
+    .environment(reportManager)
 }

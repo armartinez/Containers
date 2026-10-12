@@ -5,491 +5,725 @@
 //  Created by Axel Martinez on 2026/02/05.
 //
 
-import SwiftUI
 import ContainerSystem
-import ContainerizationOCI
-import ContainerResource
-import ContainerAPIClient
+import Containerization
 import ContainerizationExtras
-
-private struct PortsConfiguration: Identifiable {
-    let id: UUID = UUID()
-    var hostAddress: String = "127.0.0.1"
-    var host: Int = 0
-    var container: Int = 0
-    var publishProtocol: PublishProtocol = .tcp
-    
-    var publishedPort: PublishPort {
-        let address = try? IPAddress(hostAddress.trimmingCharacters(in: .whitespacesAndNewlines))
-        let fallbackAddress = try! IPAddress("127.0.0.1")
-        
-        return .init(
-            hostAddress: address ?? fallbackAddress,
-            hostPort: UInt16(self.host),
-            containerPort: UInt16(self.container),
-            proto: self.publishProtocol,
-            count: 1
-        )
-    }
-}
-
-private struct VolumeConfiguration: Identifiable {
-    let id: UUID = UUID()
-    var name: String = ""
-    var path: String = ""
-}
+import ContainerizationOCI
+import Foundation
+import SwiftUI
+import Virtualization
 
 struct CreateContainerView: View {
+    enum Mode {
+        case create
+        case run
+
+        var title: String {
+            switch self {
+            case .create:
+                "Create New Container"
+            case .run:
+                "Run Container"
+            }
+        }
+
+        var progressTitle: String {
+            switch self {
+            case .create:
+                "Creating container..."
+            case .run:
+                "Running container..."
+            }
+        }
+
+        var buttonTitle: String {
+            switch self {
+            case .create:
+                "Create"
+            case .run:
+                "Run"
+            }
+        }
+    }
+
+    enum Tab: String, CaseIterable, Identifiable {
+        case info = "Info"
+        case process = "Process"
+        case options = "Options"
+
+        var id: String { rawValue }
+    }
+
+    @Environment(ContainerManager.self) private var containerManager
     @Environment(ImageManager.self) private var imageManager
     @Environment(VolumeManager.self) private var volumeManager
-    @Environment(ContainerManager.self) private var containerManager
+    @Environment(ActivityCenter.self) private var activityCenter
     @Environment(\.dismiss) private var dismiss
+
+    let mode: Mode
 
     @SwiftUI.State var imageReference: String
 
     @SwiftUI.State private var process: ContainerProcess = .init()
-    @SwiftUI.State private var container: ContainerInfo = .init()
-    @SwiftUI.State private var volumes: [VolumeConfiguration] = []
-    @SwiftUI.State private var ports: [PortsConfiguration] = []
+    @SwiftUI.State private var options: ContainerManagementOptions = .init()
+    @SwiftUI.State private var configuration: ContainerConfiguration = .init()
+    @SwiftUI.State private var volumes: [VolumeMount] = []
+    @SwiftUI.State private var mounts: [Mount] = []
+    @SwiftUI.State private var ports: [PortMapping] = []
     @SwiftUI.State private var environments: [KeyValue] = []
-    @SwiftUI.State private var resource: ContainerConfiguration.Resources = .init()
     @SwiftUI.State private var registryScheme: String = RequestScheme.auto.rawValue
-    @SwiftUI.State private var errorMessage: String?
+    @SwiftUI.State private var platformString: String = Platform.current.description
+    @SwiftUI.State private var shmSize: String = ""
+    @SwiftUI.State private var capabilities: [Capability] = []
+    @SwiftUI.State private var errorAlert: ErrorAlert?
     @SwiftUI.State private var localImages: [ImageDescription] = []
     @SwiftUI.State private var availableVolumes: [Volume] = []
-    @SwiftUI.State private var volumeInitialized: Bool = false
     @SwiftUI.State private var showProgressView: Bool = false
-    @SwiftUI.State private var showAdditionalSettings: Bool = false
+    @SwiftUI.State private var creationTask: Task<Void, Never>?
+    @SwiftUI.State private var stepTransitionDirection: Int = 1
+    @SwiftUI.State private var showStopConfirmation: Bool = false
     @SwiftUI.State private var showPickLocalImage: Bool = false
-    @SwiftUI.State private var showPickVolume: Bool = false
-    
+
+    // Tabs
+    @SwiftUI.State private var selectedTab: Tab = .info
+    @SwiftUI.State private var isVolumesExpanded = false
+    @SwiftUI.State private var isMountsExpanded = false
+    @SwiftUI.State private var isPortsExpanded = false
+    @SwiftUI.State private var isCapabilitiesExpanded = false
+
+    init(imageReference: String, mode: Mode = .create) {
+        self.mode = mode
+        self._imageReference = State(initialValue: imageReference)
+    }
+
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Create New Container")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                    
-                    Text("Configure your new container settings")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
+        CreateView(
+            title: mode.title,
+            error: $errorAlert,
+            isProcessing: showProgressView,
+            progressTitle: mode.progressTitle,
+            width: Self.sheetWidth,
+            height: 460,
+            scrollsContent: selectedTab == .options,
+            contentPadding: selectedTab == .info ? 20 : 0,
+            contentID: showProgressView
+                ? AnyHashable("progress") : AnyHashable(selectedTab),
+            contentTransition: stepTransition,
+            tabBar: {
+                CreateViewTabBar(selection: $selectedTab)
+            },
+            content: {
+                tabContent
+            },
+            actions: {
                 Spacer()
-            }
-            .padding(20)
-            .background(Color(nsColor: .controlBackgroundColor))
-            
-            Divider()
-            
-            // Content
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Error message
-                    if let errorMessage = self.errorMessage {
-                        HStack(spacing: 8) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.red)
-                            Text(errorMessage)
-                                .font(.subheadline)
-                                .foregroundStyle(.red)
-                        }
-                        .padding(12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.red.opacity(0.1))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                    }
-                    
-                    // Image Section
-                    GroupBox {
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                Text("Image")
-                                    .font(.headline)
-                                Spacer()
-                                Text("Local or Remote")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            
-                            HStack(spacing: 8) {
-                                TextField("alpine:latest", text: $imageReference)
-                                    .textFieldStyle(.roundedBorder)
-                                
-                                Button(action: {
-                                    Task {
-                                        do {
-                                            self.showProgressView = true
-                                            self.localImages = try await imageManager.list()
-                                            self.showProgressView = false
-                                            self.showPickLocalImage = true
-                                        } catch (let error) {
-                                            self.errorMessage = "\(error)"
-                                        }
-                                    }
-                                }, label: {
-                                    Image(systemName: "ellipsis.circle")
-                                })
-                                .buttonStyle(.plain)
-                                .help("Choose from local images")
-                            }
-                        }
-                        .padding(12)
-                    }
-                    
-                    // Optional Settings Disclosure
-                    DisclosureGroup(
-                        isExpanded: $showAdditionalSettings,
-                        content: {
-                            VStack(alignment: .leading, spacing: 16) {
-                                Divider()
-                                additionalSettings
-                            }
-                            .padding(.top, 12)
-                        },
-                        label: {
-                            Label {
-                                Text("Optional Settings")
-                                    .font(.headline)
-                            } icon: {
-                                Image(systemName: "gearshape")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    )
-                    .padding(16)
-                    .background(Color(nsColor: .controlBackgroundColor))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-                .padding(20)
-            }
-            
-            Divider()
-            // Bottom Bar
-            HStack {
-                if showProgressView {
-                    ProgressView()
-                        .controlSize(.small)
-                        .padding(.trailing, 8)
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Creating container...")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        
-                        if !containerManager.progressMessage.isEmpty {
-                            Text(containerManager.progressMessage)
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
-                                .lineLimit(2)
-                        }
-                    }
-                }
-                
-                Spacer()
-                
-                Button("Cancel") {
-                    self.dismiss()
+                Button {
+                    confirmStop()
+                } label: {
+                    Text("Cancel")
+                        .frame(width: .sheetButtonLabelWidth)
                 }
                 .buttonStyle(.bordered)
-                .controlSize(.large)
-                
-                Button("Create Container") {
+
+                Button {
                     createContainer()
+                } label: {
+                    Text(mode.buttonTitle)
+                        .frame(width: .sheetButtonLabelWidth)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(imageReference.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .defaultAction(
+                    enabled: !showProgressView
+                        && !imageReference.trimmingCharacters(
+                            in: .whitespacesAndNewlines
+                        ).isEmpty
+                )
             }
-            .padding(16)
-            .background(Color(nsColor: .controlBackgroundColor))
+        )
+        .sheet(
+            isPresented: $showPickLocalImage,
+            content: {
+                ItemPicker(
+                    title: "Choose Image",
+                    actionTitle: "Choose",
+                    items: self.localImages.map {
+                        Item(id: $0.digest, label: $0.reference)
+                    },
+                    onSelect: { self.imageReference = $0.label }
+                )
+            }
+        )
+        .confirmationDialog(
+            mode == .run ? "Stop Running Container" : "Stop Creating Container",
+            isPresented: $showStopConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Stop", role: .destructive) {
+                cancelCreation()
+                dismiss()
+            }
+
+            Button("Continue", role: .cancel) {}
+        } message: {
+            Text(
+                "The container hasn’t finished being \(mode == .run ? "started" : "created"). Stopping now discards it."
+            )
         }
-        .frame(width: 600, height: 500)
-        .sheet(isPresented: $showProgressView, content: {
-            ProgressView()
-        })
-        .sheet(isPresented: $showPickLocalImage, content: {
-            ImageSelectionView(images: self.localImages, onImageSelect: {
-                self.imageReference = $0
-            })
-        })
-        .animation(.default, value: self.ports.count)
-        .animation(.default, value: self.environments.count)
+        .task {
+            await preloadLocalImages()
+            await preloadVolumes()
+        }
         .onDisappear {
             self.showProgressView = false
         }
-        .interactiveDismissDisabled()
     }
-    
-    func createContainer() {
-        
-        let trimmedReference = imageReference.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        guard !trimmedReference.isEmpty else {
-            self.errorMessage = "Image is not specified."
+
+    /// Work under way is only stopped on purpose, so the button asks first.
+    private func confirmStop() {
+        guard showProgressView else {
+            dismiss()
             return
         }
-        
+
+        showStopConfirmation = true
+    }
+
+    private static var platformOptions: [String] {
+        let current = Platform.current
+        var options = [current.description]
+
+        if current.architecture == "arm64" {
+            options.append("linux/amd64")
+        }
+
+        return options
+    }
+
+    @ViewBuilder
+    private var imageSelectionField: some View {
+        if mode == .run {
+            FormRow(title: "Image") {
+                Text(imageReference)
+                    .fontWeight(.semibold)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+        } else {
+            FormRow(title: "Image") {
+                FormPicker(
+                    placeholder: "Select Image...",
+                    options: localImages.map { $0.reference },
+                    selection: $imageReference,
+                    actionTitle: "Other...",
+                    onAction: { showPickLocalImage = true }
+                )
+            }
+        }
+    }
+
+    private func preloadLocalImages() async {
+        guard localImages.isEmpty else { return }
+
+        localImages = (try? await imageManager.list().map(\.description)) ?? []
+
+        if imageReference.isEmpty, let first = localImages.first {
+            imageReference = first.reference
+        }
+    }
+
+    private func showLocalImageSelection() {
+        guard localImages.isEmpty else {
+            showPickLocalImage = true
+            return
+        }
+
         Task {
-            //self.showProgressView = true
-            
             do {
-                var validVolumeFSs: [Filesystem] = []
-                let mountOptions: [String] = []
-                
-                for volumeConfig in self.volumes {
-                    var volume: Volume
-                    
-                    if let first = self.availableVolumes.first(where: {$0.name == volumeConfig.name}) {
-                        volume = first
-                    } else {
-                        var trimmedName = volumeConfig.name.trimmingCharacters(in: .whitespacesAndNewlines)
-                        var labels: [KeyValue] = []
+                showProgressView = true
+                localImages = try await imageManager.list().map(\.description)
+                showProgressView = false
+                showPickLocalImage = true
+            } catch (let error) {
+                showProgressView = false
+                errorAlert = ErrorAlert(
+                    "The images couldn’t be loaded.",
+                    error: error
+                )
+            }
+        }
+    }
 
-                        if trimmedName.isEmpty {
-                            trimmedName = VolumeStorage.generateAnonymousVolumeName()
-                            labels.append(.init(key: Volume.anonymousLabel))
-                        }
+    /// Nested virtualization is refused outright by the Virtualization
+    /// framework on hardware that cannot do it, so the flag is not offered
+    /// where ticking it could only fail.
+    private static let supportsNestedVirtualization =
+        VZGenericPlatformConfiguration.isNestedVirtualizationSupported
 
-                        let vol = try await volumeManager.create(name: trimmedName, labels: labels, options: [], sizeInBytes: nil)
-                        
-                        volume = vol
-                    }
-                    
-                    let fs = Filesystem.volume(name: volume.name, format: volume.format, source: volume.source, destination: volumeConfig.path, options: mountOptions)
-                    
-                    validVolumeFSs.append(fs)
+    @ViewBuilder
+    private var tabContent: some View {
+        switch selectedTab {
+        case .info:
+            infoTab
+        case .process:
+            processTab
+        case .options:
+            optionsTab
+        }
+    }
+
+    private var infoTab: some View {
+        FormStack {
+            imageSelectionField
+
+            FormRow(
+                title: "Name",
+                description:
+                    "Leave empty to generate a unique name automatically. Names start with a letter or number, and may contain only letters, numbers, underscores, periods, and hyphens."
+            ) {
+                FormField(
+                    placeholder: "my-container",
+                    value: $options.name,
+                    filter: EntityName.valid(from:)
+                )
+            }
+        }
+    }
+
+    private var processTab: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            FormStack {
+                FormRow(
+                    title: "Entrypoint",
+                    description: "Override the entrypoint of the image."
+                ) {
+                    FormField(
+                        placeholder: "/bin/sh -c \"echo hello\"",
+                        value: Binding(
+                            get: { options.entryPoint ?? "" },
+                            set: {
+                                options.entryPoint = $0.isEmpty ? nil : $0
+                            }
+                        )
+                    )
                 }
-                
-                self.container.volumes = validVolumeFSs
-                
-                let validPorts = self.ports.filter({$0.host > 0 && $0.container > 0})
-                
-                self.container.publishPorts = validPorts.map(\.publishedPort)
-                
-                let validEnvironments = self.environments.filter({!$0.key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty})
-                
+
+                FormRow(title: "Stop Signal") {
+                    FormField(
+                        placeholder: "SIGTERM",
+                        value: Binding(
+                            get: { configuration.stopSignal ?? "" },
+                            set: {
+                                configuration.stopSignal =
+                                    $0.trimmingCharacters(
+                                        in: .whitespacesAndNewlines
+                                    ).isEmpty ? nil : $0
+                            }
+                        )
+                    )
+                }
+            }
+            .padding(20)
+
+            Divider()
+
+            FormList(
+                items: $environments,
+                columnTitles: ["Environment Variables", "Value"],
+                addLabel: "Add Environment Variable",
+                emptyMessage: "No Environment Variables",
+                newItem: { KeyValue() },
+                rowFields: { keyValue in
+                    [
+                        .init(
+                            placeholder: "Key",
+                            text: keyValue.key,
+                            isMonospaced: true
+                        ),
+                        .init(
+                            placeholder: "Value",
+                            text: keyValue.value,
+                            isMonospaced: true
+                        ),
+                    ]
+                }
+            )
+        }
+        .frame(
+            maxWidth: .infinity,
+            maxHeight: .infinity,
+            alignment: .topLeading
+        )
+    }
+
+    private var optionsTab: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            FormStack {
+                FormRow(
+                    title: "Platform",
+                    description:
+                        "Choose the image variant to run. AMD64 containers use Rosetta on Apple Silicon."
+                ) {
+                    FormPicker(
+                        placeholder: "Platform",
+                        options: Self.platformOptions,
+                        selection: $platformString
+                    )
+                }
+
+                FormRow(
+                    title: "Shared Memory",
+                    description: "Size of /dev/shm (e.g. 64M, 1G)"
+                ) {
+                    FormField(
+                        placeholder: "64M",
+                        value: $shmSize
+                    )
+                }
+
+                FormRow(title: "Management") {
+                    VStack(alignment: .leading) {
+                        Toggle(
+                            "Remove the container after it stops",
+                            isOn: $options.deleteOnTermination
+                        )
+
+                        Toggle(
+                            "Mount the root filesystem as read-only",
+                            isOn: $configuration.readOnly
+                        )
+
+                        Toggle(isOn: $configuration.virtualization) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(
+                                    "Expose virtualization capabilities to the container"
+                                )
+
+                                Text(
+                                    Self.supportsNestedVirtualization
+                                        ? "Requires host and guest support."
+                                        : "Nested virtualization needs an Apple silicon M3 chip or later."
+                                )
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            }
+                        }
+                        .disabled(!Self.supportsNestedVirtualization)
+
+                        Toggle(
+                            "Forward SSH agent socket to container",
+                            isOn: $configuration.ssh
+                        )
+                    }
+                    .toggleStyle(.checkbox)
+                    .fieldProse()
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+            .padding(.bottom, 12)
+
+            Divider()
+
+            FormList(
+                items: $volumes,
+                title: "Volumes",
+                isExpanded: $isVolumesExpanded,
+                editorDescription:
+                    "Select an existing volume or create an anonymous volume. To create a new named volume, use the Volumes section.",
+                columnTitles: ["Source", "Target"],
+                addLabel: "Add Volume",
+                emptyMessage: "No Volumes",
+                hasContentBelow: true,
+                newItem: {
+                    VolumeMount(
+                        source: availableVolumes.isEmpty
+                            ? .anonymousVolume : .volume,
+                        volumeName: availableVolumes.last?.name ?? ""
+                    )
+                },
+                rowSummary: \.summary,
+                rowValues: \.columns,
+                canSave: { !$0.trimmedTarget.isEmpty },
+                editorContent: { $volume in
+                    VolumeEditor(
+                        mount: $volume,
+                        availableVolumes: availableVolumes
+                    )
+                }
+            )
+            .padding(.horizontal)
+
+            FormList(
+                items: $mounts,
+                title: "Mounts",
+                isExpanded: $isMountsExpanded,
+                editorDescription:
+                    "Share a host path with the container, or tick Temporary mount to create an in-memory mount instead.",
+                columnTitles: ["Source", "Target"],
+                addLabel: "Add Mount",
+                emptyMessage: "No Mounts",
+                hasContentBelow: true,
+                newItem: { Mount() },
+                rowSummary: \.summary,
+                rowValues: \.columns,
+                canSave: {
+                    !$0.trimmedTarget.isEmpty
+                        && ($0.isTemporary || $0.hostURL != nil)
+                },
+                editorContent: { $mount in
+                    MountEditor(mount: $mount)
+                }
+            )
+            .padding(.horizontal)
+
+            FormList(
+                items: $ports,
+                title: "Port Mappings",
+                isExpanded: $isPortsExpanded,
+                editorDescription:
+                    "Publish a container port on the host, so it can be reached from outside the container.",
+                columnTitles: ["Host", "Container", "Protocol"],
+                addLabel: "Add Port Mapping",
+                emptyMessage: "No Port Mappings",
+                hasContentBelow: true,
+                newItem: { PortMapping() },
+                rowSummary: \.summary,
+                rowValues: \.columns,
+                editorContent: { $port in
+                    PortEditor(port: $port)
+                }
+            )
+            .padding(.horizontal)
+
+            FormList(
+                items: $capabilities,
+                title: "Capabilities",
+                isExpanded: $isCapabilitiesExpanded,
+                columnTitles: ["Capability"],
+                addLabel: "Add Capability",
+                emptyMessage: "No Capabilities",
+                newItem: { Capability() },
+                rowFields: { $capability in
+                    [
+                        .init(
+                            placeholder: "CAP_NET_ADMIN",
+                            text: $capability.name
+                        )
+                    ]
+                }
+            )
+            .padding(.horizontal)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func preloadVolumes() async {
+        guard availableVolumes.isEmpty else { return }
+        availableVolumes = (try? await volumeManager.list()) ?? []
+    }
+
+    private static let sheetWidth: CGFloat = 660
+    private static let stepAnimation: Animation = .easeOut(duration: 0.2)
+
+    private var stepTransition: AnyTransition {
+        let distance = Self.sheetWidth / 3
+        let shift = stepTransitionDirection > 0 ? distance : -distance
+
+        return .asymmetric(
+            insertion: .opacity.combined(with: .offset(x: shift)),
+            removal: .identity
+        )
+    }
+
+    /// Stops work still in flight, so that closing the sheet leaves nothing
+    /// running behind it.
+    private func cancelCreation() {
+        guard showProgressView else { return }
+
+        creationTask?.cancel()
+        creationTask = nil
+        showProgressView = false
+    }
+
+    /// Hands the work over to the row it will appear in, which is where it is watched and stopped from now on.
+    private func startCreation(
+        imageReference: String,
+        process: ContainerProcess,
+        configuration: ContainerConfiguration,
+        options: ContainerManagementOptions,
+        registryScheme: String
+    ) {
+        let containerManager = containerManager
+        let mode = mode
+        let imagesDir = UserDefaults.applicationDataRoot
+            .appendingPathComponent("images")
+
+        activityCenter.start(
+            id: options.name,
+            kind: .container,
+            title: options.name,
+            subtitle: imageReference,
+            failureTitle: mode == .run
+                ? "The container couldn’t be started."
+                : "The container couldn’t be created."
+        ) { progress in
+            func create(progress: Progress) async throws -> String {
+                try await containerManager.create(
+                    imageReference: imageReference,
+                    imagesDir: imagesDir,
+                    arguments: [],
+                    process: process,
+                    configuration: configuration,
+                    options: options,
+                    registryScheme: registryScheme,
+                    progress: progress
+                )
+            }
+
+            guard mode == .run else {
+                _ = try await create(progress: progress)
+                return nil
+            }
+
+            // Starting weighs as one of creating's six steps.
+            progress.totalUnitCount = 7
+
+            let containerID = try await progress.performStep(
+                pendingUnitCount: 6
+            ) { step in
+                try await create(progress: step)
+            }
+
+            try await progress.performStep { step in
+                _ = try await containerManager.run(
+                    id: containerID,
+                    progress: step
+                )
+            }
+
+            return nil
+        }
+    }
+
+    private func createContainer() {
+        let trimmedReference = imageReference.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+
+        guard !trimmedReference.isEmpty else {
+            self.errorAlert = ErrorAlert(
+                "The container needs an image.",
+                message: "Choose the image to create the container from."
+            )
+            return
+        }
+
+        let trimmedShmSize = shmSize.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        var shmSizeInBytes: UInt64?
+
+        if !trimmedShmSize.isEmpty {
+            guard let bytes = try? Parser.memoryInBytes(from: trimmedShmSize)
+            else {
+                self.errorAlert = ErrorAlert(
+                    "The shared memory size isn’t valid.",
+                    message: "Enter a size such as 64M or 1G."
+                )
+                return
+            }
+
+            shmSizeInBytes = bytes
+        }
+
+        stepTransitionDirection = 1
+
+        withAnimation(Self.stepAnimation) {
+            self.showProgressView = true
+        }
+
+        creationTask = Task {
+            do {
+                let resolved = try ResolvedMounts(
+                    mounts: self.mounts,
+                    volumes: self.volumes
+                )
+
+                let existingVolumes = try await volumeManager.list()
+                var volumes: [Volume] = []
+
+                for request in resolved.volumes {
+                    volumes.append(
+                        try await volumeManager.volume(
+                            named: request.name,
+                            among: existingVolumes
+                        )
+                    )
+                }
+
+                self.configuration.mounts = resolved.filesystems(with: volumes)
+                self.configuration.platform = try Platform(
+                    from: self.platformString
+                )
+                self.configuration.shmSize = shmSizeInBytes
+                self.configuration.capabilities = self.capabilities.names
+
+                self.configuration.publishedPorts = self.ports.compactMap(
+                    \.publishedPort
+                )
+
+                let validEnvironments = self.environments.filter({
+                    !$0.key.trimmingCharacters(in: .whitespacesAndNewlines)
+                        .isEmpty
+                        && !$0.value.trimmingCharacters(
+                            in: .whitespacesAndNewlines
+                        )
+                        .isEmpty
+                })
+
                 self.process.environments = validEnvironments.map { kv in
                     "\(kv.key)=\(kv.value)"
                 }
-                
+
                 // Make copies for actor boundary crossing
                 let process = self.process
-                let container = self.container
-                let resource = self.resource
+                let configuration = self.configuration
+                var options = self.options
                 let registryScheme = self.registryScheme
+                // Settled here rather than left to the manager, so that the
+                // row the work appears in can be titled with the name the
+                // container is going to have.
+                options.name = try ContainerManager.createContainerID(
+                    name: options.name
+                )
 
-                try await containerManager.create(
+                startCreation(
                     imageReference: trimmedReference,
-                    imagesDir: UserDefaults.applicationDataRoot.appendingPathComponent("images"),
-                    arguments: [],
                     process: process,
-                    container: container,
-                    resource: resource,
+                    configuration: configuration,
+                    options: options,
                     registryScheme: registryScheme
                 )
-                
-                self.dismiss()
-                
+
+                dismiss()
+
+                return
+            } catch is CancellationError {
+                // The sheet was closed on purpose; there is nothing to report.
             } catch (let error) {
-                self.errorMessage = "\(error)"
+                self.errorAlert = ErrorAlert(
+                    mode == .run
+                        ? "The container couldn’t be started."
+                        : "The container couldn’t be created.",
+                    error: error,
+                    showsDetails: false
+                )
             }
-            
-            //self.showProgressView = false
-        }
-    }
-    
-    @ViewBuilder
-    private var additionalSettings: some View {
-        VStack(spacing: 16) {
-            // Entrypoint
-            GroupBox {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Entrypoint")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                    
-                    Text("Overrides the image's default entrypoint")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    
-                    TextField("/bin/sh -c \"echo hello\"", text: Binding(
-                        get: { container.entryPoint ?? "" },
-                        set: { container.entryPoint = $0.isEmpty ? nil : $0 }
-                    ))
-                    .textFieldStyle(.roundedBorder)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(12)
-            }
-            
-            // Ports
-            GroupBox {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text("Port Mappings")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        Spacer()
-                        Text("[Host-ip:]Host:Container")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    Text("Ports set to 0 will be ignored. Host-ip defaults to 127.0.0.1")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    
-                    if ports.isEmpty {
-                        Button {
-                            self.ports.append(.init())
-                        } label: {
-                            Label("Add Port Mapping", systemImage: "plus.circle")
-                        }
-                        .buttonStyle(.borderless)
-                    } else {
-                        ForEach($ports) { $port in
-                            EditableRow(content: {
-                                TextField("127.0.0.1", text: $port.hostAddress)
-                                    .textFieldStyle(.roundedBorder)
-                                    .frame(maxWidth: 100)
-                                Text(":")
-                                TextField("8080", value: $port.host, format: .number)
-                                    .textFieldStyle(.roundedBorder)
-                                Text(":")
-                                TextField("80", value: $port.container, format: .number)
-                                    .textFieldStyle(.roundedBorder)
-                                Picker("", selection: $port.publishProtocol) {
-                                    Text("TCP").tag(PublishProtocol.tcp)
-                                    Text("UDP").tag(PublishProtocol.udp)
-                                }
-                                .labelsHidden()
-                                .fixedSize()
-                            }, onAdd: {
-                                self.ports.append(.init())
-                            }, onDelete: {
-                                self.ports.removeAll(where: {$0.id == port.id})
-                            })
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(12)
-            }
-            
-            // Environment Variables
-            GroupBox {
-                VStack(alignment: .leading, spacing: 12) {
-                    KeyValuesEditView(keyValues: $environments, title: "Environment Variables")
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(12)
-            }
-            
-            /*/ Volumes
-            GroupBox {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text("Volume Mounts")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        Spacer()
-                        Text("<name>:/path")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Text("If volume name is empty or not found, a new volume will be created")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    
-                    if self.volumes.isEmpty {
-                        Button {
-                            self.volumes.append(.init())
-                        } label: {
-                            Label("Add Volume Mount", systemImage: "plus.circle")
-                        }
-                        .buttonStyle(.borderless)
-                    } else {
-                        ForEach($volumes) { $volume in
-                            EditableRow(content: {
-                                VolumeRow(
-                                    volumeName: $volume.name,
-                                    path: $volume.path,
-                                    showPickVolume: $showPickVolume,
-                                    availableVolumes: $availableVolumes,
-                                    showAvailableVolume: {
-                                        guard !self.volumeInitialized else {
-                                            self.showPickVolume = true
-                                            return
-                                        }
 
-                                        Task {
-                                            do {
-                                                self.showProgressView = true
-                                                self.availableVolumes = try await volumeManager.list()
-                                                self.showProgressView = false
-                                                self.volumeInitialized = true
-                                                self.showPickVolume = true
-                                            } catch (let error) {
-                                                self.errorMessage = "\(error)"
-                                            }
-                                        }
-                                    })
-                            }, onAdd: {
-                                self.volumes.append(.init())
-                            }, onDelete: {
-                                self.volumes.removeAll(where: {$0.id == volume.id})
-                            })
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(12)
-            }*/
-        }
-    }
-}
+            self.stepTransitionDirection = -1
 
-private struct VolumeRow: View {
-    @Binding var volumeName: String
-    @Binding var path: String
-    @Binding var showPickVolume: Bool
-    @Binding var availableVolumes: [Volume]
-    
-    var showAvailableVolume: () -> Void
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Volume")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                HStack(spacing: 4) {
-                    TextField("my-volume", text: $volumeName)
-                        .textFieldStyle(.roundedBorder)
-                    Button(action: {
-                        self.showAvailableVolume()
-                    }, label: {
-                        Image(systemName: "ellipsis.circle")
-                    })
-                    .buttonStyle(.plain)
-                    .help("Choose from existing volumes")
-                }
-            }
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Path")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                TextField("/data", text: $path)
-                    .textFieldStyle(.roundedBorder)
+            withAnimation(Self.stepAnimation) {
+                self.showProgressView = false
             }
         }
-        .sheet(isPresented: $showPickVolume, content: {
-            VolumeSelectionView(volumes: self.availableVolumes, onVolumeSelect: {
-                self.volumeName = $0
-            })
-        })
     }
 }

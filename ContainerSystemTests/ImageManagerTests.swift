@@ -5,102 +5,134 @@
 //  Created by Axel Martinez on 2026/02/08.
 //
 
-import Testing
-import Foundation
-import ContainerResource
+import Containerization
 import ContainerizationOCI
+import Foundation
+import Testing
 
 @testable import ContainerSystem
 
+@Suite("Image manager")
 struct ImageManagerTests {
-    
+
     // MARK: - Setup Helper
-    
+
     @MainActor
     private func setupTestSystem() async throws -> (URL, ContainerRuntime) {
         let appRoot = FileManager.default.temporaryDirectory
             .appendingPathComponent("test-containers-\(UUID().uuidString)")
-        
+
         let testRuntime = MockContainerRuntime()
         let system = SystemManager(testRuntime: testRuntime)
         try await system.start(appRoot: appRoot)
-        
+
         return (appRoot, testRuntime)
     }
-    
+
     // MARK: - List Images Tests
-    
-    @Test("List images returns array")
+
+    @Test("Empty store lists no images")
     @MainActor
-    func testListImages() async throws {
+    func emptyStoreListsNoImages() async throws {
         let (_, testRuntime) = try await setupTestSystem()
-        
+
         let manager = ImageManager(testRuntime: testRuntime)
         let images = try await manager.list()
-        
-        #expect(type(of: images) == [ImageDescription].self)
+
+        #expect(images.isEmpty)
     }
-    
-    @Test("List images filters infrastructure images")
+
+    @Test("List fails after stop")
     @MainActor
-    func testListImagesFiltersInfra() async throws {
+    func listFailsAfterStop() async throws {
         let (_, testRuntime) = try await setupTestSystem()
-        
+
+        let manager = ImageManager(testRuntime: testRuntime)
+        try await testRuntime.stop()
+
+        await #expect(throws: (any Error).self) {
+            _ = try await manager.list()
+        }
+    }
+
+    @Test("List hides infrastructure images")
+    @MainActor
+    func listHidesInfrastructureImages() async throws {
+        let (_, testRuntime) = try await setupTestSystem()
+
         let manager = ImageManager(testRuntime: testRuntime)
         let images = try await manager.list()
-        
+
         // Verify no infra images
         let hasInfraImages = images.contains { image in
-            image.reference.hasPrefix("infra:")
+            image.description.reference.hasPrefix("infra:")
         }
         #expect(hasInfraImages == false)
     }
-    
+
     // MARK: - Save Images Tests
-    
-    @Test("Save images to valid directory")
+
+    @Test("Save to directory")
     @MainActor
-    func testSaveImagesToDirectory() async throws {
+    func saveToDirectory() async throws {
         let (_, testRuntime) = try await setupTestSystem()
-        
+
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("ImageManagerTests")
             .appendingPathComponent(UUID().uuidString)
-        
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        
+
+        try FileManager.default.createDirectory(
+            at: tempDir,
+            withIntermediateDirectories: true
+        )
+
         let manager = ImageManager(testRuntime: testRuntime)
-        try await manager.save(images: [], platform: .current, outputDirectory: tempDir)
-        
+        try await manager.save(
+            images: [],
+            platform: .current,
+            outputURL: tempDir.appendingPathComponent("images.tar")
+        )
+
         // Cleanup
-        try? FileManager.default.removeItem(at: tempDir.deletingLastPathComponent())
+        try? FileManager.default.removeItem(
+            at: tempDir.deletingLastPathComponent()
+        )
     }
-    
-    @Test("Save images with empty list succeeds")
+
+    @Test("Save empty list")
     @MainActor
-    func testSaveEmptyImageList() async throws {
+    func saveEmptyList() async throws {
         let (_, testRuntime) = try await setupTestSystem()
-        
+
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("ImageManagerTests")
             .appendingPathComponent(UUID().uuidString)
-        
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        
+
+        try FileManager.default.createDirectory(
+            at: tempDir,
+            withIntermediateDirectories: true
+        )
+
         let manager = ImageManager(testRuntime: testRuntime)
-        try await manager.save(images: [], platform: .current, outputDirectory: tempDir)
-        
+        try await manager.save(
+            images: [],
+            platform: .current,
+            outputURL: tempDir.appendingPathComponent("images.tar")
+        )
+
         // Cleanup
-        try? FileManager.default.removeItem(at: tempDir.deletingLastPathComponent())
+        try? FileManager.default.removeItem(
+            at: tempDir.deletingLastPathComponent()
+        )
     }
-    
+
     // MARK: - Delete Images Tests
-    
-    @Test("Delete images with empty list succeeds")
+
+    @Test("Delete empty list")
     @MainActor
-    func testDeleteEmptyImageList() async throws {
+    func deleteEmptyList() async throws {
         let (_, testRuntime) = try await setupTestSystem()
-        
+
         let manager = ImageManager(testRuntime: testRuntime)
         try await manager.delete(images: [])
     }
