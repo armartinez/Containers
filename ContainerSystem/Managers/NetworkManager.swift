@@ -12,17 +12,21 @@ import Foundation
 import Logging
 import Observation
 
-/// Manages DNS resolver configuration for container domains.
+/// A manager that reads the DNS domains configured for containers on the Mac.
+///
+/// macOS keeps a resolver file for each domain in ``resolverDirectory``. Changing those files needs
+/// administrator privileges, so this manager can list domains but not create or delete them.
 @Observable
 @MainActor
 public final class NetworkManager {
+    /// The folder where macOS keeps a resolver file for each DNS domain.
     public static let resolverDirectory = URL(fileURLWithPath: "/etc/resolver", isDirectory: true)
 
     private static let filePrefix = "containerization."
 
     private let logger: Logger
 
-    /// Public initializer - creates instance
+    /// Creates a manager for the shared container system.
     public init() {
         var logger = Logger(label: "app.containers.manager.network")
         logger.logLevel = .debug
@@ -31,6 +35,13 @@ public final class NetworkManager {
 
     // MARK: - Public API
 
+    /// Returns the DNS domains that resolver files in a folder configure for containers, sorted by name.
+    ///
+    /// Only the resolver files the container tools create are read, and a file without a `domain` entry
+    /// is skipped.
+    ///
+    /// - Parameter directory: The folder to read, usually ``resolverDirectory``.
+    /// - Returns: The domains, or an empty array if the folder can't be read.
     public func listDomains(in directory: URL) -> [String] {
         let fileManager = FileManager.default
         let isScoped = directory.startAccessingSecurityScopedResource()
@@ -83,6 +94,13 @@ public final class NetworkManager {
 
     // MARK: - Create domain
 
+    /// Creates a DNS domain for containers.
+    ///
+    /// Creating a resolver file needs administrator privileges, which the app doesn't have, so this method
+    /// always throws ``DNSError/notSupported``.
+    ///
+    /// - Parameter name: The domain to create.
+    /// - Throws: ``DNSError/notSupported``, always.
     public func createDomain(name: String) throws {
         // DNS domain creation requires root privileges.
         // This functionality is disabled in the GUI.
@@ -92,6 +110,13 @@ public final class NetworkManager {
 
     // MARK: - Delete domain
 
+    /// Deletes a DNS domain for containers.
+    ///
+    /// Deleting a resolver file needs administrator privileges, which the app doesn't have, so this method
+    /// always throws ``DNSError/notSupported``.
+    ///
+    /// - Parameter name: The domain to delete.
+    /// - Throws: ``DNSError/notSupported``, always.
     public func deleteDomain(name: String) throws {
         // DNS domain deletion requires root privileges.
         // This functionality is disabled in the GUI.
@@ -101,8 +126,11 @@ public final class NetworkManager {
 
     // MARK: - Errors
 
+    /// Errors that DNS domain operations throw.
     public enum DNSError: LocalizedError {
+        /// The domain name isn't valid.
         case invalidDomainName
+        /// The app can't create or delete DNS domains.
         case notSupported
 
         public var errorDescription: String? {

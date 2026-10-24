@@ -28,6 +28,7 @@ final class MockContainerRuntime: ContainerRuntime {
     private var mockContainersService: ContainersService?
     private var mockImagesService: ImagesService?
     private var mockKernelService: KernelService?
+    private var mockReportsService: ReportsService?
     private var mockContentStore: ContentStore?
 
     init() {
@@ -69,6 +70,17 @@ final class MockContainerRuntime: ContainerRuntime {
         return service
     }
 
+    override func getReportsService() throws -> ReportsService {
+        guard let service = mockReportsService else {
+            throw ContainerizationError(
+                .internalError,
+                message: "Reports service not initialized"
+            )
+        }
+
+        return service
+    }
+
     override func getContentStore() throws -> ContentStore {
         guard let store = mockContentStore else {
             throw ContainerizationError(
@@ -103,6 +115,14 @@ final class MockContainerRuntime: ContainerRuntime {
 
         // Set appRoot so getAppRoot() works
         self.appRoot = appRoot
+
+        let reports = try ReportsService(appRoot: appRoot, log: logger)
+
+        await reports.addChangeCallback { @MainActor [weak self] reports in
+            self?.reports = reports
+        }
+
+        self.mockReportsService = reports
 
         // Create stores — these are filesystem-only and safe in test hosts
         let localContentStore = try LocalContentStore(
@@ -152,6 +172,7 @@ final class MockContainerRuntime: ContainerRuntime {
         mockContainersService = nil
         mockImagesService = nil
         mockKernelService = nil
+        mockReportsService = nil
         mockContentStore = nil
         isRunning = false
 

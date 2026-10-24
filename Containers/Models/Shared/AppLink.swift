@@ -10,6 +10,9 @@ import Foundation
 /// A link into the app, such as `containers://reports?name=redis-test`, which
 /// the dashboard opens: from a detail window, or from outside the app.
 enum AppLink: Equatable {
+    /// The Containers section.
+    case containers
+
     /// The Reports section, narrowed to what was reported against `name`.
     case reports(name: String)
 
@@ -20,6 +23,8 @@ enum AppLink: Equatable {
         components.scheme = Self.scheme
 
         switch self {
+        case .containers:
+            components.host = "containers"
         case .reports(let name):
             components.host = "reports"
             components.queryItems = [URLQueryItem(name: "name", value: name)]
@@ -38,6 +43,8 @@ enum AppLink: Equatable {
         let query = components.queryItems ?? []
 
         switch components.host {
+        case "containers":
+            self = .containers
         case "reports":
             guard let name = query.first(where: { $0.name == "name" })?.value, !name.isEmpty else {
                 return nil

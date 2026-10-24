@@ -44,6 +44,22 @@ final class DashboardToolbarController: NSObject {
     /// Shown under the toolbar, in the titlebar.
     var accessory: AnyView?
 
+    /// The handlers and views capture the view that keeps this controller in
+    /// its state, so they have to go once that view does, or neither is ever freed.
+    func releaseHandlers() {
+        onDeleteSearchTokens = { _ in }
+        onChooseSearchTokenOption = { _, _ in }
+        onSubmitSearch = nil
+        onToggleFilter = { _ in }
+        onAdd = {}
+        onClear = {}
+        onSelectionItem = { _ in }
+        onSearch = { _ in }
+        addTip = nil
+        runTip = nil
+        accessory = nil
+    }
+
     static let filterIdentifier = NSToolbarItem.Identifier("filter")
     static let addIdentifier = NSToolbarItem.Identifier("add")
     static let clearIdentifier = NSToolbarItem.Identifier("clear")

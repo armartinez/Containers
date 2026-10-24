@@ -61,18 +61,26 @@ final class DetailToolbarController: NSObject, NSToolbarDelegate {
         window.toolbarStyle = .unified
 
         // Labels are usually wider than the icons, so the tabs are rebuilt.
+        // Weak: the observation is kept on this controller.
         displayModeObservation = toolbar.observe(
             \.displayMode,
             options: [.initial, .new]
-        ) { toolbar, _ in
+        ) { [weak self] toolbar, _ in
             MainActor.assumeIsolated {
                 UserDefaults.standard.set(
                     toolbar.displayMode.rawValue,
                     forKey: Self.displayModeKey
                 )
-                self.scheduleTabRebuild()
+                self?.scheduleTabRebuild()
             }
         }
+    }
+
+    /// The handlers capture the view that keeps this controller in its state,
+    /// so they have to go once that view does, or neither is ever freed.
+    func releaseHandlers() {
+        items = []
+        onSelectTab = { _ in }
     }
 
     /// Returns once the toolbar is installed and done resizing, or on timeout.

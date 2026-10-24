@@ -9,33 +9,49 @@ import Foundation
 import Logging
 import Observation
 
-/// Records failed work and keeps the reports the app shows. Every instance shares the runtime's reports.
+/// A manager that records failed work, and keeps the reports it leaves.
+///
+/// A report keeps what went wrong with a pull, a build or a container after the work ends, so people
+/// can review it later. Reports are saved in the container system's storage folder.
 @Observable
 @MainActor
 public final class ReportManager {
     let runtime: ContainerRuntime
 
     private let logger: Logger
-    private let folder: String
 
-    /// The most recent first.
-    public private(set) var reports: [Report] {
-        get { runtime.reports }
-        set { runtime.reports = newValue }
+    /// The reports, most recent first.
+    public var reports: [Report] {
+        runtime.reports
     }
 
-    public convenience init() {
-        self.init(runtime: ContainerRuntime.shared)
-    }
-
-    init(runtime: ContainerRuntime, folder: String = "reports") {
-        self.runtime = runtime
+    /// Creates a manager for the shared container system.
+    public init() {
+        self.runtime = ContainerRuntime.shared
         self.logger = Logger(label: "app.containers.manager.report")
-        self.folder = folder
     }
 
-    /// Doesn't throw: failing to write a report isn't worth a second failure.
-    /// A container's own output isn't copied in, as its Logs already hold it.
+    #if DEBUG
+    /// Creates a manager for the given runtime, so tests can use a runtime of their own.
+    init(testRuntime: ContainerRuntime) {
+        self.runtime = testRuntime
+        self.logger = Logger(label: "app.containers.manager.report.test")
+    }
+    #endif
+
+    /// Records a report of failed work.
+    ///
+    /// This method doesn't throw: if the report can't be saved, it returns `nil`. A container's own
+    /// output isn't copied into its report, because the container's logs already keep it.
+    ///
+    /// - Parameters:
+    ///   - level: How serious the problem is.
+    ///   - kind: The kind of work that failed.
+    ///   - name: The name of what the work was on, such as an image's reference or a container's ID.
+    ///   - message: A short description of what went wrong.
+    ///   - error: The error the work threw, which the report keeps in full.
+    ///   - startedAt: When the work started, or `nil` if the report covers only the moment it failed.
+    /// - Returns: The new report, or `nil` if it couldn't be saved.
     @discardableResult
     public func record(
         level: Report.Level = .error,
@@ -45,21 +61,16 @@ public final class ReportManager {
         error: any Error,
         startedAt: Date? = nil
     ) async -> Report? {
-        guard let store = try? store() else { return nil }
-
         do {
-            let entry = try await store.record(
-                level: level,
-                kind: kind,
-                name: name,
-                message: message,
-                body: Self.body(for: error),
-                startedAt: startedAt
-            )
-
-            reports.insert(entry, at: 0)
-
-            return entry
+            return try await runtime.getReportsService()
+                .record(
+                    level: level,
+                    kind: kind,
+                    name: name,
+                    message: message,
+                    body: Self.body(for: error),
+                    startedAt: startedAt
+                )
         } catch {
             logger.error("Couldn’t write the report: \(error)")
 
@@ -67,102 +78,107 @@ public final class ReportManager {
         }
     }
 
+    /// The number of reports that haven't been read.
     public var unreadCount: Int {
         reports.count { !$0.isRead }
     }
 
+    /// Marks reports as read.
+    ///
+    /// - Parameter ids: The IDs of the reports to mark.
     public func markRead(_ ids: [String]) async {
-        guard let store = try? store() else { return }
+        let ids = Set(ids)
+        let unread = reports.filter { !$0.isRead && ids.contains($0.id) }.map(\.id)
 
-        let unread = Set(
-            reports.filter { !$0.isRead && ids.contains($0.id) }.map(\.id)
-        )
+        guard !unread.isEmpty, let service = service() else { return }
 
-        guard !unread.isEmpty else { return }
-
-        await store.markRead(Array(unread))
-
-        reports = reports.map { report in
-            guard unread.contains(report.id) else { return report }
-
-            return Report(
-                id: report.id,
-                date: report.date,
-                endDate: report.endDate,
-                level: report.level,
-                kind: report.kind,
-                name: report.name,
-                message: report.message,
-                isRead: true
-            )
-        }
+        await service.markRead(unread)
     }
 
+    /// Reloads the reports from the storage folder.
     public func refresh() async {
-        guard let store = try? store() else { return }
+        guard let service = service() else { return }
 
-        reports = await store.list()
+        runtime.reports = await service.list()
     }
 
-    /// `kinds` lists every kind the item is filed under: an image is reported
-    /// both as `.image` and as `.build`.
+    /// Returns the most recent report about something.
+    ///
+    /// - Parameters:
+    ///   - name: The name of what the work was on.
+    ///   - kinds: Every kind of report it can have. An image, for example, has both image and build reports.
+    /// - Returns: The report, or `nil` if there isn't one.
     public func latestReport(named name: String, ofKind kinds: Set<Report.Kind>) -> Report? {
         reports.first { kinds.contains($0.kind) && $0.name == name }
     }
 
+    /// Returns the reports about something, most recent first.
+    ///
+    /// - Parameters:
+    ///   - name: The name of what the work was on.
+    ///   - kinds: Every kind of report it can have.
+    /// - Returns: The reports.
     public func reports(named name: String, ofKind kinds: Set<Report.Kind>) -> [Report] {
         reports.filter { kinds.contains($0.kind) && $0.name == name }
     }
 
+    /// Returns a Boolean value that indicates whether a report has been read.
+    ///
+    /// - Parameter id: The report's ID.
+    /// - Returns: `true` if the report has been read or doesn't exist.
     public func isRead(_ id: String) -> Bool {
         reports.first { $0.id == id }?.isRead ?? true
     }
 
-    public func entry(for id: String) async -> Report? {
-        guard let store = try? store() else { return nil }
+    /// Returns a report, read from the storage folder.
+    ///
+    /// - Parameter id: The report's ID.
+    /// - Returns: The report, or `nil` if it doesn't exist.
+    public func get(id: String) async -> Report? {
+        guard let service = service() else { return nil }
 
-        return await store.entry(for: id)
+        return await service.get(id: id)
     }
 
+    /// Returns the full text of a report.
+    ///
+    /// - Parameter id: The report's ID.
+    /// - Returns: The text, or `nil` if it can't be read.
     public func body(of id: String) async -> String? {
-        guard let store = try? store() else { return nil }
+        guard let service = service() else { return nil }
 
-        return try? await store.body(of: id)
+        do {
+            return try await service.body(of: id)
+        } catch {
+            logger.error("Couldn’t read the report \(id): \(error)")
+
+            return nil
+        }
     }
 
-    public func remove(_ ids: [String]) async {
-        guard let store = try? store() else { return }
-
-        await store.remove(ids)
-
-        reports.removeAll { ids.contains($0.id) }
+    /// Deletes reports.
+    ///
+    /// - Parameter ids: The IDs of the reports to delete.
+    public func delete(ids: [String]) async {
+        await service()?.delete(ids: ids)
     }
 
-    /// For items that were deleted, whose reports nothing can lead to any more.
-    public func remove(named names: [String], ofKind kinds: Set<Report.Kind>) async {
-        let names = Set(names)
-        let ids =
-            reports
-            .filter { kinds.contains($0.kind) && names.contains($0.name) }
-            .map(\.id)
-
-        guard !ids.isEmpty else { return }
-
-        await remove(ids)
-    }
-
+    /// Returns the location of a report's file, for showing it in the Finder.
+    ///
+    /// - Parameter id: The report's ID.
+    /// - Returns: The file's URL, or `nil` if the storage folder isn't available.
     public func url(for id: String) -> URL? {
-        try? store().url(for: id)
+        service()?.url(for: id)
     }
 
-    private func store() throws -> ReportStore {
-        if let store = runtime.reportStore { return store }
+    private func service() -> ReportsService? {
+        do {
+            return try runtime.getReportsService()
+        } catch {
+            logger.error("Couldn’t reach the reports: \(error)")
 
-        let store = try ReportStore(root: runtime.getAppRoot().appendingPathComponent(folder))
-
-        runtime.reportStore = store
-
-        return store
+            return nil
+        }
     }
 
     static func body(for error: any Error) -> String {

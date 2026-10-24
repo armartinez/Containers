@@ -59,6 +59,7 @@ struct CreateContainerView: View {
     @Environment(VolumeManager.self) private var volumeManager
     @Environment(ActivityCenter.self) private var activityCenter
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
 
     let mode: Mode
 
@@ -705,6 +706,11 @@ struct CreateContainerView: View {
                 )
 
                 dismiss()
+
+                // The start is followed on the container's dashboard row, which a detail window doesn't show.
+                if mode == .run {
+                    openURL(AppLink.containers.url)
+                }
 
                 return
             } catch is CancellationError {

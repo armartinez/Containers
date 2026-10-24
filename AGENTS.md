@@ -36,15 +36,16 @@ Calls flow in one direction:
 ```
 SwiftUI / AppKit views
   → Managers         (ContainerSystem, @MainActor, public)
-    → Services       (ContainerSystem, actors, internal)
-      → Containerization
+    → ContainerRuntime.get…Service()
+      → Services     (ContainerSystem, actors, internal)
+        → Containerization
 ```
 
 - `ContainerRuntime` (`ContainerRuntime.shared`) owns the services and the runtime's shared state: system status, setup progress and reports. It also installs the prerequisites (kernel, init image) on first start.
-- Managers are thin handles over the runtime, one per domain. `ImageManager()` uses the shared runtime; tests pass a `MockContainerRuntime` through `init(testRuntime:)`.
-- Services are the engine: internal actors that hold the state of containers, images and kernels. Only managers call them.
+- Managers are thin handles over the runtime, one per domain. `ImageManager()` uses the shared runtime; tests pass a `MockContainerRuntime` through `init(testRuntime:)`. A manager can use any service, but never another manager.
+- Services are the engine: internal actors that hold the state of containers, images, kernels and reports. Only the runtime creates them, when the system starts, and lets go of them when it stops. Everything else reaches them through the runtime's `get…Service()` accessors: managers and `Build/`. Nothing works while the system is stopped, by design.
 - Progress is Foundation's `Progress`. A method that reports progress takes `progress: Progress? = nil`, sets `totalUnitCount` to its own steps and runs each with `progress.performStep("…") { step in … }` (`Progress/Progress+Steps.swift`). Callers compose operations by weighting steps with `pendingUnitCount`.
-- Failed work is recorded by `ReportManager` into `ReportStore`: a plist manifest plus one gzipped body per report.
+- Failed work is recorded by `ReportManager` through `ReportsService` into `ReportStore`: a plist manifest plus one gzipped body per report. Managers that delete items also delete their reports through `ReportsService`.
 - Errors are thrown as they are. Views turn them into an `ErrorAlert`; the framework and app models never build alerts.
 
 ## ContainerSystem layout
@@ -52,7 +53,7 @@ SwiftUI / AppKit views
 Role first, with domains inside each role:
 
 - `Managers/`: `ContainerManager`, `ImageManager`, `VolumeManager`, `NetworkManager`, `SystemManager`, `ReportManager`.
-- `Services/`: `ContainersService`, `ImagesService`, `KernelService`.
+- `Runtime/`: `ContainerRuntime` and its extensions, with `Services/` inside it (`ContainersService`, `ImagesService`, `KernelService`, `ReportsService`), since the runtime owns the services.
 - `Container/`, `Image/`, `Network/`, `Volume/`: value types for each domain (`ContainerConfiguration`, `ContainerSnapshot`, `ImageSummary`, `VolumeSummary`, …).
 - `Build/`: the BuildKit client. `Builder/` holds the gRPC client and the builder container's controller; `BuildPipeline/` handles the stream, split by concern (`+ImageResolver`, `+ContentStore`, `+FSSync`, `+Export`, `+Stdio`).
 - `Persistence/`, `Plugin/`, `Log/`, `Progress/`, `Reports/`, `Common/`: one folder per infrastructure concern.
@@ -63,8 +64,8 @@ Layer first, like Apple's SwiftUI samples:
 
 - `ContainersApp.swift`: scenes, window IDs and the objects put in the environment.
 - `Models/`: value types, grouped by feature to mirror `Views/` (`Containers/`, `Images/`, `Volumes/`, `Reports/`, `Dashboard/`, `Shared/`). Models never fetch or do work.
-- `ViewModels/`: `@Observable` objects a single view creates and owns with `@State` (`RegistryLookup`).
-- `Utilities/`: `@Observable` objects the app owns and shares through the environment (`ActivityCenter`, `SystemActions`), plus support types (`ProgressObserver`, `WindowResizer`).
+- `ViewModels/`: `@Observable` objects that hold state and actions for views: `RegistryLookup`, owned by the pull sheet with `@State`, and `SystemActions`, created by the app and shared by the menu bar and the status bar.
+- `Utilities/`: app-wide objects not tied to a screen (`ActivityCenter`), plus support types (`ProgressObserver`, `WindowResizer`).
 - `Controllers/`: AppKit controllers only, such as the `NSToolbarDelegate` objects. Their `NSViewRepresentable` binders live in `Views/`.
 - `Views/<Feature>/`: one folder per screen. `Views/Shared/` holds complete units that appear once on a screen (`TableView`, `DetailView`, `CreateView`, `ScopeBar`). `Views/Components/` holds small reusable elements that can repeat on a screen (`BarToggle`, `SearchToken`, form rows).
 - `Extensions/`: one `Type+Topic.swift` per extension.

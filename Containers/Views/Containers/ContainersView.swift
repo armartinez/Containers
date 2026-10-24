@@ -24,6 +24,8 @@ struct ContainersView: View {
     var refreshTrigger: Int
 
     @State private var containers: [ContainerItem] = []
+    @State private var refreshTask: Task<Void, Error>?
+    @State private var needsRefresh = false
 
     private var trimmedText: String {
         self.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -266,8 +268,26 @@ struct ContainersView: View {
         }
     }
 
+    /// Refreshes run one at a time. Several containers changing at once fire
+    /// overlapping refreshes, and an older list landing last would leave the
+    /// state dots behind. A call made mid-refresh reruns it once that's done,
+    /// and every caller waits for a list fetched after it asked.
     private func refreshContainers() async throws {
-        containers = try await containerManager.list().map(ContainerItem.init)
+        needsRefresh = true
+
+        let task =
+            refreshTask
+            ?? Task {
+                defer { refreshTask = nil }
+
+                while needsRefresh {
+                    needsRefresh = false
+                    containers = try await containerManager.list().map(ContainerItem.init)
+                }
+            }
+
+        refreshTask = task
+        try await task.value
     }
 }
 

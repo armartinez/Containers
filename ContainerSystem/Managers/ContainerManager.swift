@@ -12,21 +12,26 @@ import ContainerizationOS
 import Foundation
 import Logging
 
-/// Manages container operations.
-/// Create instances via public init() - automatically references shared runtime.
+/// A manager that creates, runs, stops and deletes containers.
+///
+/// Methods that work on one container take its `id`. Containers the container system runs for itself,
+/// such as the builder, are left out of ``list()``.
 @Observable
 @MainActor
 public final class ContainerManager {
-    /// Internal runtime reference (hidden from UI)
     let runtime: ContainerRuntime
 
     private let logger: Logger
     private static let internalContainerIDs: Set<String> = ["buildkit"]
 
+    /// The time a container last changed state, such as when it started or stopped.
+    ///
+    /// Observe this property to refresh a list of containers when one of them changes.
     public var lastContainerChange: Date {
         runtime.lastContainerStateChange
     }
 
+    /// Creates a manager for the shared container system.
     public init() {
         self.runtime = ContainerRuntime.shared
         var logger = Logger(label: "app.containers.manager.container")
@@ -35,7 +40,7 @@ public final class ContainerManager {
     }
 
     #if DEBUG
-    /// Internal initializer for testing - allows injection of test runtime
+    /// Creates a manager for the given runtime, so tests can use a runtime of their own.
     init(testRuntime: ContainerRuntime) {
         self.runtime = testRuntime
         var logger = Logger(label: "app.containers.manager.container.test")
@@ -46,6 +51,19 @@ public final class ContainerManager {
 
     // MARK: - Public API
 
+    /// Creates a container from an image, pulling and unpacking the image first if needed.
+    ///
+    /// - Parameters:
+    ///   - imageReference: The image to create the container from.
+    ///   - imagesDir: The folder that holds the container system's images.
+    ///   - arguments: Arguments to pass to the container's process, after its entry point.
+    ///   - process: How to run the container's process, such as its environment and working directory.
+    ///   - configuration: The container's resources, mounts, ports and other settings.
+    ///   - options: Options for managing the container, such as its name and whether to delete it when it stops.
+    ///   - registryScheme: The scheme to reach the image's registry with.
+    ///   - progress: A progress that follows the work, step by step, or `nil` to not follow it.
+    /// - Returns: The container's ID.
+    /// - Throws: An error if a container with the same ID exists, or the container can't be created.
     @discardableResult
     public func create(
         imageReference: String,
@@ -59,15 +77,17 @@ public final class ContainerManager {
     ) async throws -> String {
         let service = try await runtime.getContainersService()
         let containerID = try Self.createContainerID(name: options.name)
+
         logger.info("Creating container", metadata: ["id": "\(containerID)", "image": "\(imageReference)"])
+
         let existingContainers = await service.list()
+
         guard
             !existingContainers.contains(where: {
                 $0.configuration.id == containerID
             })
         else {
             logger.error("Container \(containerID) already exists")
-
             throw ContainerizationError(.exists, message: "container already exists: \(containerID)")
         }
 
@@ -110,8 +130,14 @@ public final class ContainerManager {
         return configuration.id
     }
 
-    /// Starts a container, returning its exit code when attached to it and
-    /// `nil` when detached from it.
+    /// Starts a container.
+    ///
+    /// - Parameters:
+    ///   - id: The container's ID.
+    ///   - detach: Whether to return as soon as the container starts, rather than wait for it to exit.
+    ///   - progress: A progress that follows the work, step by step, or `nil` to not follow it.
+    /// - Returns: The container's exit code, or `nil` if `detach` is `true`.
+    /// - Throws: An error if the container can't start. A container that fails to start is stopped.
     @discardableResult
     public func run(id: String, detach: Bool = true, progress: Progress? = nil) async throws -> Int32? {
         logger.info("Starting container", metadata: ["id": "\(id)"])
@@ -140,6 +166,7 @@ public final class ContainerManager {
         return try await service.wait(id: id)
     }
 
+    /// Returns the memory and CPU time each running container uses, or an empty array if the system isn't running.
     public func resourceUsage() async -> [ContainerResourceUsage] {
         guard let service = try? await runtime.getContainersService() else {
             return []
@@ -148,6 +175,7 @@ public final class ContainerManager {
         return await service.resourceUsage()
     }
 
+    /// Returns every container, except the ones the container system uses itself, such as the builder.
     public func list() async throws -> [ContainerSnapshot] {
         let service = try await runtime.getContainersService()
 
@@ -156,6 +184,11 @@ public final class ContainerManager {
         }
     }
 
+    /// Returns a container.
+    ///
+    /// - Parameter id: The container's ID.
+    /// - Returns: The container.
+    /// - Throws: An error if there's no container with that ID.
     public func get(id: String) async throws -> ContainerSnapshot {
         let service = try await runtime.getContainersService()
 
@@ -170,11 +203,24 @@ public final class ContainerManager {
         return snapshot
     }
 
+    /// Runs a command in a running container and returns its output.
+    ///
+    /// - Parameters:
+    ///   - id: The container's ID.
+    ///   - arguments: The command and its arguments.
+    /// - Returns: What the command writes to its standard output.
+    /// - Throws: An error if the container isn't running or the command can't run.
     public func exec(id: String, arguments: [String]) async throws -> String {
         let service = try await runtime.getContainersService()
         return try await service.exec(id: id, arguments: arguments)
     }
 
+    /// Stops containers, giving each one's process time to exit before forcing it.
+    ///
+    /// - Parameters:
+    ///   - ids: The IDs of the containers to stop.
+    ///   - timeoutSeconds: How long to wait for each process to exit after sending it `SIGTERM`.
+    /// - Throws: An error that lists each container that couldn't be stopped.
     public func stop(ids: [String], timeoutSeconds: Int32) async throws {
         let service = try await runtime.getContainersService()
 
@@ -199,16 +245,28 @@ public final class ContainerManager {
         }
     }
 
+    /// Stops containers, giving each one's process time to exit before forcing it.
+    ///
+    /// - Parameters:
+    ///   - snapshots: The containers to stop.
+    ///   - timeoutSeconds: How long to wait for each process to exit after sending it `SIGTERM`.
+    /// - Throws: An error that lists each container that couldn't be stopped.
     public func stop(snapshots: [ContainerSnapshot], timeoutSeconds: Int32) async throws {
         try await stop(ids: snapshots.map(\.configuration.id), timeoutSeconds: timeoutSeconds)
     }
 
+    /// Deletes containers, along with their data and any reports about them.
+    ///
+    /// - Parameters:
+    ///   - ids: The IDs of the containers to delete.
+    ///   - force: Whether to stop a running container and delete it, rather than leave it.
+    /// - Throws: An error that lists each container that couldn't be deleted.
     public func delete(ids: [String], force: Bool) async throws {
         let service = try await runtime.getContainersService()
         let snapshots = await service.list()
 
-        var failed: [(String, Error)] = []
         var deleted: [String] = []
+        var failed: [(String, Error)] = []
 
         for id in ids {
             do {
@@ -237,8 +295,7 @@ public final class ContainerManager {
             }
         }
 
-        // What was reported against a container has nothing left to say once the container has gone.
-        await ReportManager(runtime: runtime).remove(named: deleted, ofKind: [.container])
+        try await runtime.getReportsService().delete(named: deleted, ofKind: [.container])
 
         if !failed.isEmpty {
             let failures = failed.map({ "\($0.0): \($0.1)" }).joined(separator: "\n")
@@ -248,6 +305,12 @@ public final class ContainerManager {
         }
     }
 
+    /// Deletes containers, along with their data and any reports about them.
+    ///
+    /// - Parameters:
+    ///   - snapshots: The containers to delete.
+    ///   - force: Whether to stop a running container and delete it, rather than leave it.
+    /// - Throws: An error that lists each container that couldn't be deleted.
     public func delete(snapshots: [ContainerSnapshot], force: Bool) async throws {
         try await delete(ids: snapshots.map(\.configuration.id), force: force)
     }
@@ -298,9 +361,14 @@ public final class ContainerManager {
         return tokens
     }
 
-    /// The name a container will be known by: what it was given, or one made
-    /// up for it. Settled before the work starts, so that what is watching it
-    /// can say which container it is watching.
+    /// Returns the ID a new container will have: its name, or a generated ID if it has none.
+    ///
+    /// The ID is settled before the container is created, so work on the container can be tracked from
+    /// the start.
+    ///
+    /// - Parameter name: The name to give the container, or `nil`.
+    /// - Returns: The name, or a generated ID if `name` is `nil` or empty.
+    /// - Throws: An error if the name isn't a valid container name.
     public static func createContainerID(name: String?) throws -> String {
         let trimmedName = name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
@@ -319,7 +387,7 @@ public final class ContainerManager {
         return trimmedName
     }
 
-    /// Whether a name can be a container id.
+    /// Returns a Boolean value that indicates whether a name can be a container's ID.
     public static func isValidContainerName(_ name: String) -> Bool {
         EntityName.isValid(name)
     }

@@ -24,6 +24,10 @@ struct DetailToolbarAttacher: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {}
+
+    static func dismantleNSView(_ nsView: NSView, coordinator: Void) {
+        (nsView as? DetailToolbarBinder.BindingView)?.controller.releaseHandlers()
+    }
 }
 
 /// Hands the controller its window, and the current state on every update.
@@ -44,6 +48,10 @@ struct DetailToolbarBinder: NSViewRepresentable {
         controller.items = items
         controller.onSelectTab = onSelectTab
         controller.update()
+    }
+
+    static func dismantleNSView(_ nsView: NSView, coordinator: Void) {
+        (nsView as? BindingView)?.controller.releaseHandlers()
     }
 
     final class BindingView: NSView {

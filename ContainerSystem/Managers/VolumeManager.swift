@@ -14,13 +14,13 @@ import Logging
 import Observation
 import SystemPackage
 
-/// Manages volume operations.
-/// Create instances via public init() - automatically references shared runtime.
+/// A manager that creates, lists and deletes volumes.
+///
+/// Each volume is an ext4 disk image in the container system's storage folder.
 @Observable
 @MainActor
 public final class VolumeManager {
 
-    /// Internal runtime reference (hidden from UI)
     let runtime: ContainerRuntime
 
     private let logger: Logger
@@ -28,7 +28,7 @@ public final class VolumeManager {
     // Storage constants
     private static let blockFile = "volume.ext4"
 
-    /// Public initializer - creates instance referencing shared runtime
+    /// Creates a manager for the shared container system.
     public init() {
         self.runtime = ContainerRuntime.shared
 
@@ -39,7 +39,7 @@ public final class VolumeManager {
     }
 
     #if DEBUG
-    /// Internal initializer for testing - allows injection of test runtime
+    /// Creates a manager for the given runtime, so tests can use a runtime of their own.
     init(testRuntime: ContainerRuntime) {
         self.runtime = testRuntime
 
@@ -52,6 +52,16 @@ public final class VolumeManager {
 
     // MARK: - Public API
 
+    /// Creates a volume.
+    ///
+    /// - Parameters:
+    ///   - name: The volume's name, which must be unique and use only valid characters.
+    ///   - labels: Labels to add to the volume.
+    ///   - options: Driver options for the volume.
+    ///   - sizeInBytes: The volume's size, or `nil` for the default size.
+    /// - Returns: The new volume.
+    /// - Throws: An error if the name isn't valid, a volume with that name exists, or the volume can't be
+    ///   created.
     @discardableResult
     public func create(
         name: String,
@@ -116,12 +126,14 @@ public final class VolumeManager {
         return volume
     }
 
+    /// Returns every volume.
     public func list() async throws -> [Volume] {
         let store = try await getStore()
 
         return try await store.list()
     }
 
+    /// Returns every volume, with whether a container uses it.
     public func summaries() async throws -> [VolumeSummary] {
         let store = try await getStore()
         let service = try await runtime.getContainersService()
@@ -132,6 +144,12 @@ public final class VolumeManager {
         }
     }
 
+    /// Deletes volumes, along with their data and any reports about them.
+    ///
+    /// A volume that a container uses isn't deleted.
+    ///
+    /// - Parameter volumes: The volumes to delete.
+    /// - Throws: An error that lists each volume that couldn't be deleted.
     public func delete(volumes: [Volume]) async throws {
         let store = try await getStore()
         let service = try await runtime.getContainersService()
@@ -170,7 +188,7 @@ public final class VolumeManager {
             }
         }
 
-        await ReportManager(runtime: runtime).remove(named: deleted, ofKind: [.volume])
+        try await runtime.getReportsService().delete(named: deleted, ofKind: [.volume])
 
         if !failed.isEmpty {
             throw ContainerizationError(
@@ -200,8 +218,13 @@ public final class VolumeManager {
 }
 
 extension VolumeManager {
-    /// The volume of that name, created if it does not exist yet. An empty
-    /// name gets a fresh anonymous one.
+    /// Returns the volume with a name, creating it if it doesn't exist yet.
+    ///
+    /// - Parameters:
+    ///   - name: The volume's name. An empty name creates a new anonymous volume.
+    ///   - existing: The volumes that exist, to look the name up in.
+    /// - Returns: The existing or new volume.
+    /// - Throws: An error if the volume can't be created.
     public func volume(named name: String, among existing: [Volume]) async throws -> Volume {
         if !name.isEmpty, let match = existing.first(where: { $0.name == name }) {
             return match

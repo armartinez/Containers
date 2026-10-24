@@ -153,7 +153,7 @@ struct ActivityMenuItems: View {
             ) {
                 for activity in ended { activityCenter.remove(activity.id) }
 
-                Task { await reportManager.remove(reported) }
+                Task { await reportManager.delete(ids: reported) }
             }
         }
     }

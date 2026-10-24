@@ -23,11 +23,11 @@ extension SystemManager.Status {
     /// Names the system, since the menu bar has no window around it to say which.
     var menuMessage: String {
         switch self {
-        case .running: "Container System is running"
-        case .starting: "Container System is starting…"
-        case .stopping: "Container System is stopping…"
-        case .notStarted: "Container System is stopped"
-        case .failed: "Container System failed to start"
+        case .running: "Container system is running"
+        case .starting: "Container system is starting…"
+        case .stopping: "Container system is stopping…"
+        case .notStarted: "Container system is stopped"
+        case .failed: "Container system failed to start"
         }
     }
 
