@@ -16,17 +16,18 @@ import Logging
 import NIO
 import Observation
 
-/// Manages image operations.
-/// Create instances via public init() - automatically references shared runtime.
+/// A manager that pulls, builds, loads, saves and deletes images.
+///
+/// Images the container system uses itself, such as the builder's image, are left out of
+/// ``list(platform:includeVariants:)``.
 @Observable
 @MainActor
 public final class ImageManager {
-    /// Internal runtime reference (hidden from UI)
     let runtime: ContainerRuntime
 
     private let logger: Logger
 
-    /// Public initializer - creates instance referencing shared runtime
+    /// Creates a manager for the shared container system.
     public init() {
         self.runtime = ContainerRuntime.shared
         var logger = Logger(label: "app.containers.manager.image")
@@ -35,7 +36,7 @@ public final class ImageManager {
     }
 
     #if DEBUG
-    /// Internal initializer for testing - allows injection of test runtime
+    /// Creates a manager for the given runtime, so tests can use a runtime of their own.
     init(testRuntime: ContainerRuntime) {
         self.runtime = testRuntime
         var logger = Logger(label: "app.containers.manager.image.test")
@@ -46,8 +47,15 @@ public final class ImageManager {
 
     // MARK: - Public API
 
-    /// `includeVariants` reads the manifest and config of every platform in
-    /// each image's index, which `list` otherwise skips.
+    /// Returns every image, except the ones the container system uses itself, with whether a container uses it.
+    ///
+    /// - Parameters:
+    ///   - platform: The platform to describe each image for, such as its size and creation date, or `nil`
+    ///     to describe only the image as a whole.
+    ///   - includeVariants: Whether to also describe every platform in each image's index, which means
+    ///     reading their manifests and configurations.
+    /// - Returns: The images.
+    /// - Throws: An error if the container system isn't running.
     public func list(
         platform: Platform? = nil,
         includeVariants: Bool = false
@@ -97,6 +105,11 @@ public final class ImageManager {
         return items
     }
 
+    /// Returns the details of an image, including every platform in its index.
+    ///
+    /// - Parameter image: The image to inspect.
+    /// - Returns: The image's details.
+    /// - Throws: An error if the image isn't in the container system.
     public func inspect(image: ImageDescription) async throws -> ImageResource {
         let storedImage = try await getStoredImage(reference: image.reference)
         let index = try await storedImage.index()
@@ -111,6 +124,15 @@ public final class ImageManager {
         )
     }
 
+    /// Pulls an image from a registry and unpacks it.
+    ///
+    /// - Parameters:
+    ///   - reference: The image's reference, such as `nginx:latest`. A reference without a registry pulls
+    ///     from Docker Hub.
+    ///   - platform: The platform to pull, or `nil` to pull every platform in the image's index.
+    ///   - scheme: The scheme to reach the registry with.
+    ///   - progress: A progress that follows the work, step by step, or `nil` to not follow it.
+    /// - Throws: An error if the image can't be pulled or unpacked.
     public func pull(
         reference: String,
         platform: Platform? = .current,
@@ -150,6 +172,11 @@ public final class ImageManager {
         logger.info("Image pulled successfully: \(processedReference)")
     }
 
+    /// Builds an image from a Dockerfile, using BuildKit in the builder container.
+    ///
+    /// Each build starts the builder container, or restarts it so that it can read the build's files.
+    /// The built image is written to `outputs`: an OCI output adds it to the container system's images,
+    /// and a tar or local output writes its files to the output's destination.
     public func build(
         dockerFile: URL,
         contextDirectory: URL,
@@ -464,6 +491,13 @@ public final class ImageManager {
         logger.info("Image built successfully: \(tag)")
     }
 
+    /// Saves images to a tar archive in the OCI image layout.
+    ///
+    /// - Parameters:
+    ///   - images: The images to save.
+    ///   - platform: The platform to save.
+    ///   - outputURL: Where to write the archive.
+    /// - Throws: An error if an image can't be saved or the archive can't be written.
     public func save(images: [ImageDescription], platform: Platform = .current, outputURL: URL) async throws {
         let service = try await runtime.getImagesService()
 
@@ -484,8 +518,16 @@ public final class ImageManager {
         logger.info("Saved \(images.count) image(s)")
     }
 
-    /// - Returns: The images the archive held, which is only known once it
-    ///   has been read.
+    /// Loads the images in a tar archive and unpacks them.
+    ///
+    /// - Parameters:
+    ///   - tar: The archive to load.
+    ///   - force: Whether to load the archive even if some of its entries were rejected while extracting it,
+    ///     such as entries with unsafe paths.
+    ///   - progress: A progress that follows the work, step by step, or `nil` to not follow it.
+    /// - Returns: The images the archive held, which is only known once it has been read.
+    /// - Throws: An error if the archive can't be read or loaded, or if it has rejected entries and `force` is
+    ///   `false`.
     @discardableResult
     public func load(
         tar: URL,
@@ -568,13 +610,19 @@ public final class ImageManager {
         return loaded.0
     }
 
+    /// Deletes images, along with any reports about pulling or building them.
+    ///
+    /// The images the container system uses itself aren't deleted.
+    ///
+    /// - Parameter images: The images to delete.
+    /// - Throws: An error that lists each image that couldn't be deleted.
     public func delete(images: [ImageDescription]) async throws {
         let service = try await runtime.getImagesService()
 
         logger.info("Deleting \(images.count) image(s)")
 
-        var failed: [(String, Error)] = []
         var deleted: [String] = []
+        var failed: [(String, Error)] = []
         var didDeleteAnyImage = false
 
         for image in images {
@@ -592,9 +640,8 @@ public final class ImageManager {
             }
         }
 
-        // A build is reported against the image it was making, so both go
-        // with the image itself.
-        await ReportManager(runtime: runtime).remove(named: deleted, ofKind: [.image, .build])
+        // A build is reported against the image it was making, so both go with the image.
+        try await runtime.getReportsService().delete(named: deleted, ofKind: [.image, .build])
 
         if !failed.isEmpty {
             let failures = (failed.map({ "\($0.0): \($0.1)" })).joined(separator: "\n")
@@ -608,6 +655,13 @@ public final class ImageManager {
         }
     }
 
+    /// Returns the layers of an image for a platform, with the step of the image's history that created each one.
+    ///
+    /// - Parameters:
+    ///   - imageReference: The image's reference.
+    ///   - platform: The platform whose layers to return.
+    /// - Returns: The image's layers.
+    /// - Throws: An error if the image or its configuration can't be read.
     public func getImageLayers(imageReference: String, platform: Platform) async throws -> [ImageLayer] {
         let appRoot = try runtime.getAppRoot()
         let imagesDir = appRoot.appendingPathComponent("images")
@@ -817,17 +871,27 @@ public final class ImageManager {
     }
 }
 
+/// Where and in which format a build writes the image it produces.
 public struct BuildImageOutputConfiguration {
-    // Public initializer to allow usage in default argument values
+    /// Creates an output configuration.
+    ///
+    /// - Parameters:
+    ///   - type: The format to write the image in.
+    ///   - destinationDirectory: Where to write the image. Required for every format except OCI.
+    ///   - additionalFields: Extra settings to pass to BuildKit for this output.
     public init(type: BuildType, destinationDirectory: URL? = nil, additionalFields: [KeyValue] = []) {
         self.type = type
         self.destinationDirectory = destinationDirectory
         self.additionalFields = additionalFields
     }
 
+    /// The formats a build can write an image in.
     public enum BuildType: String, Identifiable {
+        /// An image in the OCI format, added to the container system's images.
         case oci
+        /// A tar archive of the image's files.
         case tar
+        /// The image's files, in a folder.
         case local
 
         public var id: String {
@@ -858,10 +922,10 @@ public struct BuildImageOutputConfiguration {
         }
     }
 
+    /// The format to write the image in.
     public let type: BuildType
 
-    // required for local and tar
-    // for OCi, will use a temporary URL specific for the build
+    /// Where to write the image, or `nil` for the OCI format.
     public let destinationDirectory: URL?
 
     private var destination: URL? {
@@ -875,6 +939,7 @@ public struct BuildImageOutputConfiguration {
         }
     }
 
+    /// Extra settings to pass to BuildKit for this output.
     public let additionalFields: [KeyValue]
 
     private static func keyValueString(key: String, value: String) -> String {
@@ -907,6 +972,7 @@ public struct BuildImageOutputConfiguration {
         )
     }
 
+    /// Checks that the configuration has a destination for formats that need one.
     public func verify() throws {
         guard let destinationDirectory = self.destinationDirectory else {
             if self.type == .oci {

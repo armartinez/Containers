@@ -62,6 +62,10 @@ struct DashboardToolbarBinder: NSViewRepresentable {
         controller.update()
     }
 
+    static func dismantleNSView(_ nsView: NSView, coordinator: Void) {
+        (nsView as? BindingView)?.controller.releaseHandlers()
+    }
+
     private final class BindingView: NSView {
         let controller: DashboardToolbarController
 

@@ -168,4 +168,28 @@ struct VolumeManagerTests {
         let volumes = try await manager.list()
         #expect(!volumes.contains(where: { $0.name == volumeName }))
     }
+
+    @Test("Delete removes the volume's reports")
+    @MainActor
+    func deleteRemovesVolumeReports() async throws {
+        struct Failure: Error {}
+
+        let (_, testRuntime) = try await setupTestSystem()
+
+        let volumeName = "test-volume-\(UUID().uuidString)"
+        let manager = VolumeManager(testRuntime: testRuntime)
+        let reportManager = ReportManager(testRuntime: testRuntime)
+
+        let volume = try await manager.create(
+            name: volumeName,
+            labels: [],
+            options: [],
+            sizeInBytes: 1024 * 1024
+        )
+
+        await reportManager.record(kind: .volume, name: volumeName, message: "The volume failed.", error: Failure())
+        try await manager.delete(volumes: [volume])
+
+        #expect(reportManager.reports.isEmpty)
+    }
 }

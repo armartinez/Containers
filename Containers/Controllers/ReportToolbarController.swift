@@ -32,6 +32,12 @@ final class ReportToolbarController: NSObject, NSToolbarDelegate {
         window.toolbarStyle = .unified
     }
 
+    /// The handler captures the view that keeps this controller in its state,
+    /// so it has to go once that view does, or neither is ever freed.
+    func releaseHandlers() {
+        onSearch = { _ in }
+    }
+
     private var identifiers: [NSToolbarItem.Identifier] {
         [.flexibleSpace, Self.searchIdentifier]
     }

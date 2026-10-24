@@ -13,15 +13,19 @@ import ContainerizationOCI
 import Foundation
 import Logging
 
-/// Container runtime lifecycle and services.
-/// Owns all services and provides factory methods for creating managers.
+/// `ContainerRuntime` manages the lifecycle of the in-process container system, and owns
+/// the services that run it.
+///
+/// The services are created when the system starts and released when it stops. Managers
+/// reach them through the `get…Service()` accessors, which throw while the system is stopped.
+/// The runtime also holds the state the app observes, such as the system's status and its reports.
 @Observable
 @MainActor
 class ContainerRuntime {
-    /// Shared runtime instance - internal to ContainerSystem module
+    /// The runtime every manager uses, unless a test provides its own.
     static let shared = ContainerRuntime()
 
-    /// Private initializer - forces use of singleton in production
+    /// Creates the shared runtime.
     private init() {
         _ = Self._bootstrapLogging
         var l = Logger(label: "app.containers.system")
@@ -34,7 +38,7 @@ class ContainerRuntime {
     }
 
     #if DEBUG
-    /// Internal initializer for testing - allows subclassing
+    /// Creates a runtime for tests, which subclass it to provide services of their own.
     init(forTesting: Bool) {
         _ = Self._bootstrapLogging
         var l = Logger(label: "app.containers.system.test")
@@ -64,9 +68,6 @@ class ContainerRuntime {
 
     /// What a first start is fetching, while it fetches it.
     var setupProgress: Progress?
-
-    @ObservationIgnored var reportStore: ReportStore?
-
     var pluginProcesses: [String: PluginProcessInfo] = [:]
 
     // Current configuration
@@ -80,6 +81,7 @@ class ContainerRuntime {
     private var containersService: ContainersService?
     private var imagesService: ImagesService?
     private var kernelService: KernelService?
+    private var reportsService: ReportsService?
     private var contentStore: ContentStore?
 
     let logger: Logger
@@ -117,6 +119,17 @@ class ContainerRuntime {
             throw ContainerizationError(
                 .internalError,
                 message: "Kernel service not initialized"
+            )
+        }
+
+        return service
+    }
+
+    func getReportsService() throws -> ReportsService {
+        guard let service = reportsService else {
+            throw ContainerizationError(
+                .internalError,
+                message: "Reports service not initialized"
             )
         }
 
@@ -281,6 +294,10 @@ class ContainerRuntime {
 
         self.kernelService = kernel
 
+        let reportsService = try ReportsService(appRoot: appRoot, log: logger)
+
+        self.reportsService = reportsService
+
         servicesInitialized = true
 
         logger.info("Services initialized successfully")
@@ -290,6 +307,10 @@ class ContainerRuntime {
             guard let self = self else { return }
 
             self.lastContainerStateChange = Date()
+        }
+
+        await reportsService.addChangeCallback { @MainActor [weak self] reports in
+            self?.reports = reports
         }
     }
 
@@ -321,6 +342,7 @@ class ContainerRuntime {
         containersService = nil
         imagesService = nil
         kernelService = nil
+        reportsService = nil
         contentStore = nil
         pluginLoader = nil
         servicesInitialized = false

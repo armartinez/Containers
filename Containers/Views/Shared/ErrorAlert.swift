@@ -72,11 +72,13 @@ extension View {
 private struct ErrorAlertModifier: ViewModifier {
     @Binding var alert: ErrorAlert?
 
-    @SwiftUI.State private var window: NSWindow?
+    @SwiftUI.State private var windowReference = WindowReference()
+
+    private var window: NSWindow? { windowReference.window }
 
     func body(content: Content) -> some View {
         content
-            .background(AlertWindowBinder(window: $window))
+            .background(AlertWindowBinder(reference: windowReference))
             .onChange(of: alert) { _, alert in
                 guard let alert else { return }
                 present(alert)
@@ -185,13 +187,19 @@ private final class ErrorDetailsView: NSView {
     }
 }
 
+/// Weak, because the state that holds it lives inside the window: a strong
+/// reference would keep a closed window, and everything in it, alive.
+private final class WindowReference {
+    weak var window: NSWindow?
+}
+
 /// The window the alert hangs off, so it arrives as a sheet on the window the
 /// error came from rather than in the middle of the screen.
 private struct AlertWindowBinder: NSViewRepresentable {
-    @Binding var window: NSWindow?
+    let reference: WindowReference
 
     func makeNSView(context: Context) -> NSView {
-        BindingView { window = $0 }
+        BindingView { [reference] in reference.window = $0 }
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {}

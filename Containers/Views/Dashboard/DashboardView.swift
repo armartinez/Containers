@@ -206,13 +206,20 @@ struct DashboardView: View {
                 .onChange(of: selectedTab) { _, newTab in
                     UserDefaults.lastSelectedTab = newTab.rawValue
                 }
-                // Replaces the current filters and any typed search.
                 .onOpenURL { url in
-                    guard case .reports(let name) = AppLink(url) else { return }
-
-                    selectedTab = .reports
-                    reportFilters = [.name(name)]
-                    searchText = ""
+                    switch AppLink(url) {
+                    case .containers:
+                        // A typed search could hide the row the link leads to.
+                        selectedTab = .containers
+                        searchText = ""
+                    case .reports(let name):
+                        // Replaces the current filters and any typed search.
+                        selectedTab = .reports
+                        reportFilters = [.name(name)]
+                        searchText = ""
+                    case nil:
+                        break
+                    }
                 }
                 // Follows a new container to the tab its row appears in.
                 .onChange(of: containersBeingMade) { before, now in

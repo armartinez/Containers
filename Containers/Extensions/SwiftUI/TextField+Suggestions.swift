@@ -5,34 +5,43 @@
 //  Created by Axel Martinez on 01/08/2026.
 //
 
-import Combine
 import SwiftUI
 
 extension TextField {
-    /// Suggests completions for `text` once typing stops; `nil` cancels and closes the menu.
+    /// Suggests completions for `text` once typing stops, while `isEnabled`, such as while the field has focus.
     /// On `TextField`, so it must come first in the modifier chain.
     func suggestions(
-        for text: String?,
+        for text: String,
+        isEnabled: Bool,
         fetch: @escaping @Sendable (String) async throws -> [String]
     ) -> some View {
-        modifier(TextFieldSuggestions(text: text, fetch: fetch))
+        modifier(TextFieldSuggestions(text: text, isEnabled: isEnabled, fetch: fetch))
     }
 }
 
 private struct TextFieldSuggestions: ViewModifier {
-    let text: String?
+    private static let debounce: Duration = .milliseconds(300)
+
+    let text: String
+    let isEnabled: Bool
     let fetch: @Sendable (String) async throws -> [String]
 
-    @SwiftUI.State private var resolver = SuggestionResolver()
+    @SwiftUI.State private var suggestions: [String] = []
+    @SwiftUI.State private var isLoading = false
+
+    /// Set when the last lookup failed, as opposed to matching nothing.
+    @SwiftUI.State private var failure: String?
+
+    @SwiftUI.State private var cache = SuggestionCache()
 
     func body(content: Content) -> some View {
         content
             .overlay(alignment: .trailing) {
-                if resolver.isLoading {
+                if isLoading {
                     ProgressView()
                         .controlSize(.small)
                         .padding(.trailing, 6)
-                } else if let failure = resolver.failure {
+                } else if let failure {
                     // An empty menu otherwise reads as "nothing matched".
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(.orange)
@@ -42,83 +51,32 @@ private struct TextFieldSuggestions: ViewModifier {
                 }
             }
             .textInputSuggestions {
-                ForEach(resolver.suggestions, id: \.self) { suggestion in
+                ForEach(suggestions, id: \.self) { suggestion in
                     Text(suggestion)
                         .textInputCompletion(suggestion)
                 }
             }
-            .onChange(of: text) { _, newText in
-                // Text matching a suggestion was just picked from the menu.
-                guard let newText, !newText.isEmpty,
-                    !resolver.suggestions.contains(newText)
-                else {
-                    resolver.reset()
-                    return
-                }
-
-                resolver.send(newText, using: fetch)
-            }
-            .onDisappear {
-                resolver.reset()
-            }
-    }
-}
-
-/// Debounces typing into at most one lookup, skipping text already loaded.
-@Observable
-private final class SuggestionResolver {
-    private(set) var suggestions: [String] = []
-    private(set) var isLoading = false
-
-    /// Set when the last lookup failed, as opposed to matching nothing.
-    private(set) var failure: String?
-
-    private let queries = PassthroughSubject<String?, Never>()
-
-    /// Cleared on reset, so the text alone can be the key.
-    @ObservationIgnored private var cache = SuggestionCache()
-    @ObservationIgnored private var fetch: (@Sendable (String) async throws -> [String])?
-    @ObservationIgnored private var subscription: AnyCancellable?
-    @ObservationIgnored private var fetchTask: Task<Void, Never>?
-    @ObservationIgnored private var loadedText: String?
-
-    init(debounce: DispatchQueue.SchedulerTimeType.Stride = .milliseconds(300)) {
-        self.subscription =
-            queries
-            .debounce(for: debounce, scheduler: DispatchQueue.main)
-            .sink { [weak self] text in
-                MainActor.assumeIsolated {
-                    guard let text else { return }
-                    self?.load(text)
-                }
+            // A new text cancels the lookup for the previous one.
+            .task(id: text) {
+                await lookUp()
             }
     }
 
-    /// Takes the lookup every time, so it never goes stale against the view.
-    func send(
-        _ text: String,
-        using fetch: @escaping @Sendable (String) async throws -> [String]
-    ) {
-        self.fetch = fetch
-        queries.send(text)
-    }
+    private func lookUp() async {
+        // Picking a suggestion sets the text to it, and looking that up would open the menu again.
+        // Losing focus clears nothing, since the system hides the menu, and picking can move focus.
+        guard isEnabled, !text.isEmpty, !suggestions.contains(text) else {
+            suggestions = []
+            failure = nil
+            isLoading = false
+            return
+        }
 
-    func reset() {
-        queries.send(nil)
-        fetchTask?.cancel()
-        fetchTask = nil
-        loadedText = nil
-        suggestions = []
-        failure = nil
-        isLoading = false
-        cache.removeAll()
-    }
-
-    private func load(_ text: String) {
-        guard text != loadedText, let fetch else { return }
-
-        fetchTask?.cancel()
-        loadedText = text
+        do {
+            try await Task.sleep(for: Self.debounce)
+        } catch {
+            return
+        }
 
         if let cached = cache.values(for: text) {
             suggestions = cached
@@ -129,27 +87,24 @@ private final class SuggestionResolver {
 
         isLoading = true
 
-        fetchTask = Task {
-            do {
-                let results = try await fetch(text)
+        do {
+            let results = try await fetch(text)
 
-                // The newer text owns `isLoading` now.
-                guard !Task.isCancelled else { return }
+            // URL loading reports cancellation as its own error, or not at all.
+            guard !Task.isCancelled else { return }
 
-                cache.store(results, for: text)
-                suggestions = results
-                failure = nil
-                isLoading = false
-            } catch {
-                guard !Task.isCancelled else { return }
+            cache.store(results, for: text)
+            suggestions = results
+            failure = nil
+        } catch {
+            guard !Task.isCancelled else { return }
 
-                // Not cached, so retyping retries.
-                loadedText = nil
-                suggestions = []
-                failure = error.localizedDescription
-                isLoading = false
-            }
+            // Not cached, so retyping retries.
+            suggestions = []
+            failure = error.localizedDescription
         }
+
+        isLoading = false
     }
 }
 
@@ -198,9 +153,5 @@ private struct SuggestionCache {
         for entry in excess {
             entries[entry.key] = nil
         }
-    }
-
-    mutating func removeAll() {
-        entries.removeAll()
     }
 }

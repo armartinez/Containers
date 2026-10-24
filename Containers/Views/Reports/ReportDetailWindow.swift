@@ -59,7 +59,7 @@ struct ReportDetailWindow: View {
     }
 
     private func load() async {
-        entry = await reportManager.entry(for: id)
+        entry = await reportManager.get(id: id)
         text = await reportManager.body(of: id) ?? ""
 
         await reportManager.markRead([id])

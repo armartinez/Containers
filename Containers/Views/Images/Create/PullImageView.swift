@@ -201,7 +201,7 @@ struct PullImageView: View {
             ) {
                 EmptyView()
             }
-            .suggestions(for: isImageNameFieldFocused ? imageName : nil) {
+            .suggestions(for: imageName, isEnabled: isImageNameFieldFocused) {
                 [registryLookup, registry] text in
                 try await registryLookup.images(matching: text, on: registry)
             }
@@ -232,7 +232,7 @@ struct PullImageView: View {
             ) {
                 EmptyView()
             }
-            .suggestions(for: isTagFieldFocused ? tag : nil) {
+            .suggestions(for: tag, isEnabled: isTagFieldFocused) {
                 [registryLookup, registry, imageName] text in
                 try await registryLookup.tags(
                     for: imageName,

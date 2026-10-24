@@ -154,7 +154,7 @@ struct ReportsView: View {
         let ids = entries.map(\.id)
 
         Task {
-            await reportManager.remove(ids)
+            await reportManager.delete(ids: ids)
             activityCenter.forgetFailures(reportedAs: Set(ids))
             selection.subtract(ids)
         }
