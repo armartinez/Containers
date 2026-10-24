@@ -21,15 +21,14 @@
       "hidden" : false,
       "layers" : [
         {
-          "glass" : true,
           "hidden" : false,
-          "image-name" : "server-stack-new.png",
-          "name" : "server-stack-new",
+          "image-name" : "server-stack.svg",
+          "name" : "server-stack",
           "position" : {
             "scale" : 1,
             "translation-in-points" : [
-              -13,
-              -16.5
+              -9.5,
+              0.5
             ]
           }
         }
@@ -47,6 +46,19 @@
     {
       "hidden" : true,
       "layers" : [
+        {
+          "glass" : true,
+          "hidden" : false,
+          "image-name" : "server-stack-new.png",
+          "name" : "server-stack-old",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              -13,
+              -16.5
+            ]
+          }
+        },
         {
           "glass" : true,
           "image-name" : "Layer 2.png",

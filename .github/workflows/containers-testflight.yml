@@ -1,0 +1,170 @@
+name: Deploy containers to TestFlight
+
+permissions:
+  contents: read
+
+# Version tags, such as 0.2 or 0.2.1. A tag push can't be filtered by branch,
+# so the validate job checks that the tag is on main.
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+concurrency:
+  group: testflight
+
+jobs:
+  validate:
+    name: Validate tag
+    if: github.repository == 'try-containers/Containers'
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ github.ref_name }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6
+        with:
+          fetch-depth: 0
+
+      - name: Check that the tag is on main
+        run: |
+          if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main ; then
+            echo "::error::Tag ${VERSION} points to a commit that isn't on main."
+            false
+          fi
+
+  containers:
+    needs: validate
+    uses: ./.github/workflows/containers-build-template.yml
+    secrets: inherit
+    with:
+      release: true
+
+  deploy:
+    name: Upload to TestFlight
+    needs: containers
+    timeout-minutes: 60
+    runs-on: macos-26
+    env:
+      DEVELOPER_DIR: "/Applications/Xcode_26.6.app/Contents/Developer"
+      VERSION: ${{ github.ref_name }}
+      DEVELOPMENT_TEAM: ${{ vars.DEVELOPMENT_TEAM }}
+      KEYCHAIN_PATH: ${{ runner.temp }}/signing.keychain-db
+      API_KEY_PATH: ${{ runner.temp }}/AuthKey.p8
+      ARCHIVE_PATH: ${{ runner.temp }}/Containers.xcarchive
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Install signing certificates
+        env:
+          SIGNING_CERTIFICATES_P12: ${{ secrets.SIGNING_CERTIFICATES_P12 }}
+          SIGNING_CERTIFICATES_PASSWORD: ${{ secrets.SIGNING_CERTIFICATES_PASSWORD }}
+        run: |
+          CERTIFICATES_PATH="${RUNNER_TEMP}/certificates.p12"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          echo -n "${SIGNING_CERTIFICATES_P12}" | base64 --decode > "${CERTIFICATES_PATH}"
+
+          security create-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_PATH}"
+          security set-keychain-settings -lut 21600 "${KEYCHAIN_PATH}"
+          security unlock-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_PATH}"
+          security import "${CERTIFICATES_PATH}" -P "${SIGNING_CERTIFICATES_PASSWORD}" -A -t cert -f pkcs12 -k "${KEYCHAIN_PATH}"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_PATH}"
+          security list-keychains -d user -s "${KEYCHAIN_PATH}" $(security list-keychains -d user | tr -d '"')
+          rm "${CERTIFICATES_PATH}"
+
+      - name: Install App Store Connect API key
+        env:
+          APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+        run: printf '%s\n' "${APP_STORE_CONNECT_PRIVATE_KEY}" > "${API_KEY_PATH}"
+
+      - name: Resolve packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project Containers.xcodeproj \
+            -scheme "Containers (macOS)"
+
+      - name: Check the version
+        run: |
+          PROJECT_VERSION=$(
+            xcodebuild -showBuildSettings -json \
+              -project Containers.xcodeproj \
+              -scheme "Containers (macOS)" \
+              -configuration Release \
+              | jq -r '.[] | select(.target == "Containers") | .buildSettings.MARKETING_VERSION'
+          )
+
+          if [ "${PROJECT_VERSION}" != "${VERSION}" ] ; then
+            echo "::error::Tag ${VERSION} doesn't match MARKETING_VERSION ${PROJECT_VERSION}."
+            false
+          fi
+
+      # macOS requires every upload's build number to be higher than the last,
+      # across versions; a UTC timestamp always is, even when a run is retried.
+      - name: Archive
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project Containers.xcodeproj \
+            -scheme "Containers (macOS)" \
+            -configuration Release \
+            -destination 'generic/platform=macOS' \
+            -archivePath "${ARCHIVE_PATH}" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "${API_KEY_PATH}" \
+            -authenticationKeyID "${APP_STORE_CONNECT_KEY_ID}" \
+            -authenticationKeyIssuerID "${APP_STORE_CONNECT_ISSUER_ID}" \
+            DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" \
+            CURRENT_PROJECT_VERSION="$(date -u +%Y%m%d%H%M)"
+
+      - name: Upload
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          EXPORT_OPTIONS_PATH="${RUNNER_TEMP}/ExportOptions.plist"
+          cat > "${EXPORT_OPTIONS_PATH}" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store-connect</string>
+              <key>destination</key>
+              <string>upload</string>
+              <key>teamID</key>
+              <string>${DEVELOPMENT_TEAM}</string>
+              <key>signingStyle</key>
+              <string>automatic</string>
+              <key>manageAppVersionAndBuildNumber</key>
+              <false/>
+              <key>uploadSymbols</key>
+              <true/>
+          </dict>
+          </plist>
+          EOF
+
+          set -o pipefail
+          xcodebuild -exportArchive \
+            -archivePath "${ARCHIVE_PATH}" \
+            -exportOptionsPlist "${EXPORT_OPTIONS_PATH}" \
+            -exportPath "${RUNNER_TEMP}/Export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "${API_KEY_PATH}" \
+            -authenticationKeyID "${APP_STORE_CONNECT_KEY_ID}" \
+            -authenticationKeyIssuerID "${APP_STORE_CONNECT_ISSUER_ID}"
+
+      - name: Remove signing credentials
+        if: always()
+        run: |
+          security delete-keychain "${KEYCHAIN_PATH}" || true
+          rm -f "${API_KEY_PATH}"

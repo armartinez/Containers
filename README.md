@@ -44,8 +44,7 @@ This is a community-led effort, so we welcome as many contributors who can help.
 
 [![Build](https://github.com/try-containers/Containers/actions/workflows/containers-build.yml/badge.svg)](https://github.com/try-containers/Containers/actions/workflows/containers-build.yml)
 
-- Open `Containers.xcodeproj` in Xcode 26 or later. Copy `Configuration/Local.xcconfig.example` to `Configuration/Local.xcconfig` and set your team ID to sign the app.
-- [AGENTS.md](AGENTS.md) describes the architecture, conventions and commands, for contributors and coding agents alike.
+Open `Containers.xcodeproj` in Xcode 26 or later. To sign the app, copy `Configuration/Local.xcconfig.example` to `Configuration/Local.xcconfig` and set your team ID.
 
 ## License
 
@@ -83,4 +82,4 @@ license, open an issue.
 
 Containers is an independent project and is not affiliated with, endorsed by or sponsored by Apple Inc. Apple, Mac, macOS and Mac App Store are trademarks of Apple Inc., registered in the U.S. and other countries.
 
-Copyright © 2026 Axel Martinez.
+Copyright © 2026 Containers.
