@@ -21,15 +21,13 @@ Containers pulls, builds and runs OCI images, and manages the containers and vol
 
 Download Containers from the [Mac App Store](). On first launch it sets up the container system, downloading the Linux kernel and init image it needs, and then opens the dashboard.
 
-## Documentation
+## Next steps
 
-Guides and reference live in the [Containers wiki](https://github.com/try-containers/Containers/wiki):
-
-- Getting started with images, containers and volumes
-- Building images from a Dockerfile
-- Reports, logs and troubleshooting
-- Settings and storage
-- Building the app from source
+- Do the [initial setup](https://try-containers.github.io/documentation/containers/gettingstarted) of Containers.
+-  [Pull](https://try-containers.github.io/documentation/containers/pullinganimage) your first image and [run](https://try-containers.github.io/documentation/containers/runningacontainer) your first container.
+- Read the [technical overview](https://try-containers.github.io/documentation/containers/understandinghowcontainersworks) of Containers.
+-  Find out how to run Containers along Apple's [container](https://github.com/apple/container) CLI.
+- Browse the complete [documentation](https://try-containers.github.io/documentation/).
 
 ## Community
 

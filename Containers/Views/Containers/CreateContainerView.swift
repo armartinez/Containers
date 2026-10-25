@@ -47,9 +47,9 @@ struct CreateContainerView: View {
     }
 
     enum Tab: String, CaseIterable, Identifiable {
-        case info = "Info"
+        case general = "General"
         case process = "Process"
-        case options = "Options"
+        case management = "Management"
 
         var id: String { rawValue }
     }
@@ -86,7 +86,7 @@ struct CreateContainerView: View {
     @SwiftUI.State private var showPickLocalImage: Bool = false
 
     // Tabs
-    @SwiftUI.State private var selectedTab: Tab = .info
+    @SwiftUI.State private var selectedTab: Tab = .general
     @SwiftUI.State private var isVolumesExpanded = false
     @SwiftUI.State private var isMountsExpanded = false
     @SwiftUI.State private var isPortsExpanded = false
@@ -105,8 +105,8 @@ struct CreateContainerView: View {
             progressTitle: mode.progressTitle,
             width: Self.sheetWidth,
             height: 460,
-            scrollsContent: selectedTab == .options,
-            contentPadding: selectedTab == .info ? 20 : 0,
+            scrollsContent: selectedTab == .management,
+            contentPadding: selectedTab == .general ? 20 : 0,
             contentID: showProgressView
                 ? AnyHashable("progress") : AnyHashable(selectedTab),
             contentTransition: stepTransition,
@@ -262,16 +262,16 @@ struct CreateContainerView: View {
     @ViewBuilder
     private var tabContent: some View {
         switch selectedTab {
-        case .info:
-            infoTab
+        case .general:
+            generalTab
         case .process:
             processTab
-        case .options:
-            optionsTab
+        case .management:
+            managementTab
         }
     }
 
-    private var infoTab: some View {
+    private var generalTab: some View {
         FormStack {
             imageSelectionField
 
@@ -355,7 +355,7 @@ struct CreateContainerView: View {
         )
     }
 
-    private var optionsTab: some View {
+    private var managementTab: some View {
         VStack(alignment: .leading, spacing: 0) {
             FormStack {
                 FormRow(
@@ -380,7 +380,7 @@ struct CreateContainerView: View {
                     )
                 }
 
-                FormRow(title: "Management") {
+                FormRow(title: "Options") {
                     VStack(alignment: .leading) {
                         Toggle(
                             "Remove the container after it stops",

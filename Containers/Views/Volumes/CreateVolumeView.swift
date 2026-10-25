@@ -11,7 +11,7 @@ import SwiftUI
 
 struct CreateVolumeView: View {
     enum Tab: String, CaseIterable, Identifiable {
-        case info = "Info"
+        case general = "General"
         case options = "Options"
 
         var id: String { rawValue }
@@ -29,7 +29,7 @@ struct CreateVolumeView: View {
     @SwiftUI.State private var showProgressView: Bool = false
 
     // : Tabs
-    @SwiftUI.State private var selectedTab: Tab = .info
+    @SwiftUI.State private var selectedTab: Tab = .general
     @SwiftUI.State private var isLabelsExpanded = true
     @SwiftUI.State private var isOptionsExpanded = true
 
@@ -42,7 +42,7 @@ struct CreateVolumeView: View {
             width: 550,
             height: 450,
             scrollsContent: true,
-            contentPadding: selectedTab == .info ? 20 : 0,
+            contentPadding: selectedTab == .general ? 20 : 0,
             tabBar: {
                 CreateViewTabBar(selection: $selectedTab)
             },
@@ -81,14 +81,14 @@ struct CreateVolumeView: View {
     @ViewBuilder
     private var tabContent: some View {
         switch selectedTab {
-        case .info:
-            infoTab
+        case .general:
+            generalTab
         case .options:
             optionsTab
         }
     }
 
-    private var infoTab: some View {
+    private var generalTab: some View {
         FormStack {
             FormRow(
                 title: "Name",
@@ -159,7 +159,7 @@ struct CreateVolumeView: View {
 
             FormList(
                 items: $options,
-                title: "Driver Specific Options",
+                title: "Driver Options",
                 isExpanded: $isOptionsExpanded,
                 columnTitles: ["Key", "Value"],
                 addLabel: "Add Option",
