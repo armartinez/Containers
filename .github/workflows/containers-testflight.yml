@@ -51,13 +51,18 @@ jobs:
       DEVELOPER_DIR: "/Applications/Xcode_26.6.app/Contents/Developer"
       VERSION: ${{ github.ref_name }}
       DEVELOPMENT_TEAM: ${{ vars.DEVELOPMENT_TEAM }}
-      KEYCHAIN_PATH: ${{ runner.temp }}/signing.keychain-db
-      API_KEY_PATH: ${{ runner.temp }}/AuthKey.p8
-      ARCHIVE_PATH: ${{ runner.temp }}/Containers.xcarchive
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6
+
+      # The runner context isn't available to job-level env, so the paths
+      # under the runner's temporary directory are set here.
+      - name: Set paths
+        run: |
+          echo "KEYCHAIN_PATH=${RUNNER_TEMP}/signing.keychain-db" >> "${GITHUB_ENV}"
+          echo "API_KEY_PATH=${RUNNER_TEMP}/AuthKey.p8" >> "${GITHUB_ENV}"
+          echo "ARCHIVE_PATH=${RUNNER_TEMP}/Containers.xcarchive" >> "${GITHUB_ENV}"
 
       - name: Show Xcode version
         run: xcodebuild -version
