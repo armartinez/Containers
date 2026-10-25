@@ -107,6 +107,11 @@ Rules for where logic goes:
 - Tests read `@Test("Short sentence-case phrase") func camelCaseName()`, with no `test` prefix.
 - Each test works in its own `TemporaryDirectory` (`ContainerSystemTests/Support`) and removes it with `defer`. Tests that need managers use `MockContainerRuntime` (`ContainerSystemTests/Mocks`); service tests build the service directly over a temporary folder.
 
+## Releases
+
+- To release, set `MARKETING_VERSION` (such as `0.2`), then push a tag with that number on `main`. `containers-testflight.yml` checks that the tag is on `main` and matches the version, then uploads the build to TestFlight.
+- Release notes are the What's New text in App Store Connect; the repository keeps no changelog. `containers-release.yml` polls the App Store and, once a version is live, publishes a GitHub release for its tag with those notes and a Mac App Store link.
+
 ## Requirements
 
 - macOS 26 or later on Apple silicon.

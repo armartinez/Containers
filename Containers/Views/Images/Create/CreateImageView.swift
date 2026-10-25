@@ -139,13 +139,18 @@ struct CreateImageView: View {
     }
 
     private func paneTitle(for step: Step) -> String? {
-        guard step == .configuration,
-            selectedMethod == .build || selectedMethod == .pull
-        else {
+        guard step == .configuration else {
             return nil
         }
 
-        return "Choose options for your new image"
+        switch selectedMethod {
+        case .build:
+            return "Choose options for your new image"
+        case .pull:
+            return "Choose an image from a registry"
+        case .load, .none:
+            return nil
+        }
     }
 
     @ViewBuilder

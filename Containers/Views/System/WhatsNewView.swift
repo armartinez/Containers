@@ -43,10 +43,10 @@ struct WhatsNewView: View {
                 onContinue()
             } label: {
                 Text("Continue")
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color(nsColor: .windowBackgroundColor))
             }
             .buttonStyle(.borderedProminent)
-            .tint(foregroundColor)
+            .tint(.primary)
             .controlSize(.large)
             .keyboardShortcut(.defaultAction)
             .frame(maxWidth: .infinity)

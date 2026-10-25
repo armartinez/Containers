@@ -1,0 +1,87 @@
+name: Publish containers release
+
+permissions:
+  contents: write
+
+# App Store Connect can't notify GitHub directly, so this polls the public
+# App Store lookup and publishes a release once a version is live. A relay for
+# App Store Connect webhooks can send the app-store-release dispatch instead.
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+  repository_dispatch:
+    types: [app-store-release]
+
+concurrency:
+  group: app-store-release
+
+jobs:
+  release:
+    name: Publish release
+    if: github.repository == 'try-containers/Containers'
+    runs-on: ubuntu-latest
+    env:
+      BUNDLE_ID: app.containers.Containers
+      GH_REPO: ${{ github.repository }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Look up the App Store version
+        id: store
+        run: |
+          LOOKUP_PATH="${RUNNER_TEMP}/lookup.json"
+          curl --fail --silent --show-error --output "${LOOKUP_PATH}" "https://itunes.apple.com/lookup?bundleId=${BUNDLE_ID}"
+
+          VERSION=$(jq -r '.results[0].version // empty' "${LOOKUP_PATH}")
+          STORE_URL=$(jq -r '.results[0].trackViewUrl // empty' "${LOOKUP_PATH}" | sed 's/[?].*//')
+
+          if [ -z "${VERSION}" ] || [ -z "${STORE_URL}" ] ; then
+            echo "::error::The App Store has no app with bundle ID ${BUNDLE_ID}."
+            false
+          fi
+
+          echo "Version ${VERSION} is live at ${STORE_URL}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "url=${STORE_URL}" >> "${GITHUB_OUTPUT}"
+
+      - name: Check for a release
+        id: check
+        env:
+          VERSION: ${{ steps.store.outputs.version }}
+        run: |
+          if gh release view "${VERSION}" > /dev/null 2>&1 ; then
+            echo "Release ${VERSION} already exists."
+            echo "publish=false" >> "${GITHUB_OUTPUT}"
+          elif ! gh api "repos/${GH_REPO}/git/ref/tags/${VERSION}" > /dev/null 2>&1 ; then
+            echo "::warning::Version ${VERSION} is live, but there's no tag ${VERSION} to release."
+            echo "publish=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "publish=true" >> "${GITHUB_OUTPUT}"
+          fi
+
+      # The notes are the version's What's New text from App Store Connect.
+      # A first version can't have any; its release is written by hand.
+      - name: Publish release
+        if: steps.check.outputs.publish == 'true'
+        env:
+          VERSION: ${{ steps.store.outputs.version }}
+          STORE_URL: ${{ steps.store.outputs.url }}
+        run: |
+          NOTES=$(jq -r '.results[0].releaseNotes // empty' "${RUNNER_TEMP}/lookup.json")
+
+          if [ -z "${NOTES}" ] ; then
+            echo "::warning::Version ${VERSION} has no What's New text, so its release needs writing by hand."
+            exit 0
+          fi
+
+          {
+            printf '%s\n\n' "${NOTES}"
+            echo "[Download Containers ${VERSION} on the Mac App Store](${STORE_URL})"
+          } > "${RUNNER_TEMP}/notes.md"
+
+          gh release create "${VERSION}" \
+            --verify-tag \
+            --latest \
+            --title "Containers ${VERSION}" \
+            --notes-file "${RUNNER_TEMP}/notes.md"
