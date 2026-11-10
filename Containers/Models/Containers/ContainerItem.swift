@@ -5,10 +5,10 @@
 //  Created by Axel Martinez on 2026/02/05.
 //
 
-import ContainerSystem
 import Containerization
 import ContainerizationExtras
 import ContainerizationOCI
+import ContainersCore
 import Foundation
 
 /// Nonisolated so that a column can sort by one of its fields: the target
@@ -29,27 +29,27 @@ nonisolated struct ContainerItem: Identifiable, Hashable, Equatable, Sendable {
 
     /// Set while work on the container is under way or has failed: its
     /// making, which the row stands in for until it is made, or a start.
-    var activity: ActivitySnapshot?
+    var task: ContainerSystemTask.Snapshot?
 
     /// A container is known by its id once it exists; until then it is known
     /// by what it was asked to be called.
-    var name: String { activity?.title ?? id }
+    var name: String { task?.title ?? id }
 
     /// A row that only stands for the work of making a container.
-    var isPending: Bool { activity != nil && !exists }
+    var isPending: Bool { task != nil && !exists }
 
     /// A row for a container that is still being made, which has none of what
     /// a made one is described by.
-    init(pending activity: ActivitySnapshot) {
-        self.id = activity.id
-        self.imageName = activity.subtitle
+    init(pending task: ContainerSystemTask.Snapshot) {
+        self.id = task.id
+        self.imageName = task.subtitle
         self.status = .unknown
         self.ports = ""
         self.ipAddress = nil
         self.os = Platform.current.os
         self.arch = Platform.current.architecture
         self.startedDate = nil
-        self.activity = activity
+        self.task = task
         self.exists = false
     }
 
@@ -70,17 +70,17 @@ nonisolated struct ContainerItem: Identifiable, Hashable, Equatable, Sendable {
         self.os = snapshot.configuration.platform.os
         self.arch = snapshot.configuration.platform.architecture
         self.startedDate = snapshot.startedDate
-        self.activity = nil
+        self.task = nil
     }
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
         hasher.combine(status)
-        hasher.combine(activity)
+        hasher.combine(task)
     }
 
     static func == (lhs: ContainerItem, rhs: ContainerItem) -> Bool {
-        lhs.id == rhs.id && lhs.status == rhs.status && lhs.activity == rhs.activity
+        lhs.id == rhs.id && lhs.status == rhs.status && lhs.task == rhs.task
     }
 }
 

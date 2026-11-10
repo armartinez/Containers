@@ -57,9 +57,7 @@ private struct TextFieldSuggestions: ViewModifier {
                 }
             }
             // A new text cancels the lookup for the previous one.
-            .task(id: text) {
-                await lookUp()
-            }
+            .task(id: text, lookUp)
     }
 
     private func lookUp() async {

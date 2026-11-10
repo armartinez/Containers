@@ -1,4 +1,4 @@
-name: Deploy containers to TestFlight
+name: Deploy to TestFlight
 
 permissions:
   contents: read

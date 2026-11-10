@@ -1,0 +1,69 @@
+//
+//  ContainerSystem.Status+Message.swift
+//  Containers
+//
+//  Created by Axel Martinez on 17/09/2026.
+//
+
+import AppKit
+import ContainersCore
+import SwiftUI
+
+extension ContainerSystem.Status {
+    var message: String {
+        switch self {
+        case .running: "System running"
+        case .starting: "Starting system…"
+        case .stopping: "Stopping system…"
+        case .notStarted: "System stopped"
+        case .failed: "System failed to start"
+        case .readOnly: "Using container CLI"
+        }
+    }
+
+    /// Names the system, since the menu bar has no window around it to say which.
+    var menuMessage: String {
+        switch self {
+        case .running: "Container system is running"
+        case .starting: "Container system is starting…"
+        case .stopping: "Container system is stopping…"
+        case .notStarted: "Container system is stopped"
+        case .failed: "Container system failed to start"
+        case .readOnly: "Using container CLI"
+        }
+    }
+
+    /// Stopped and failed share a symbol; the colour tells them apart.
+    var symbol: String {
+        switch self {
+        case .running: "gauge.with.dots.needle.100percent"
+        case .readOnly: "apple.terminal"
+        case .starting: "gauge.with.dots.needle.33percent"
+        case .stopping: "gauge.with.dots.needle.67percent"
+        case .notStarted, .failed: "gauge.with.dots.needle.0percent"
+        }
+    }
+
+    /// Darkened in light mode, where the system green reads faintly as text.
+    private static let runningGreen = NSColor(name: nil) { appearance in
+        let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        return isDark
+            ? .systemGreen
+            : NSColor.systemGreen.blended(withFraction: 0.3, of: .black)
+                ?? .systemGreen
+    }
+
+    /// An `NSColor`, since AppKit paints the menu bar icon.
+    var nsColor: NSColor {
+        switch self {
+        case .running: Self.runningGreen
+        case .starting, .stopping: .systemOrange
+        case .notStarted, .readOnly: .secondaryLabelColor
+        case .failed: .systemRed
+        }
+    }
+
+    var color: Color {
+        Color(nsColor: nsColor)
+    }
+}

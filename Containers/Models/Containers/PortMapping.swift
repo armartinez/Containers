@@ -5,10 +5,10 @@
 //  Created by Axel Martinez on 03/08/2026.
 //
 
-import ContainerSystem
 import Containerization
 import ContainerizationExtras
 import ContainerizationOCI
+import ContainersCore
 import Foundation
 
 struct PortMapping: Identifiable {

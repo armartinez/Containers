@@ -47,7 +47,7 @@ When preparing a pull request, follow this checklist:
 * Imitate the conventions of surrounding code.
 * Set your own `DEVELOPMENT_TEAM` in `Configuration/Local.xcconfig` (copy it from `Configuration/Local.xcconfig.example`) rather than in Xcode's Signing & Capabilities tab, which writes it into the project file.
 * Format code as described in [Formatting contributions](#formatting-contributions) (otherwise the build will fail).
-* Verify that the app builds and that the unit tests pass (`xcodebuild test -project Containers.xcodeproj -scheme ContainerSystemTests -destination 'platform=macOS'`).
+* Verify that the app builds and that the unit tests pass (`xcodebuild test -project Containers.xcodeproj -scheme ContainersCoreTests -destination 'platform=macOS'`).
 * If you changed the UI, add a screenshot or video to the pull request.
 * Follow the [seven rules](https://cbea.ms/git-commit/#seven-rules) of great Git commit messages:
   * Separate subject from body with a blank line.
@@ -76,7 +76,7 @@ Make sure your contributions are consistent with the rest of the project's forma
 This covers every Swift file your branch adds or changes compared with `main`, committed or not. The build runs the linter, so you can check the result before pushing:
 
 ```bash
-swift format lint --recursive --configuration .swift-format Containers ContainerSystem ContainerSystemTests
+swift format lint --recursive --configuration .swift-format Containers ContainersCore ContainersCoreTests
 ```
 
 ### .gitignore contributions

@@ -5,7 +5,7 @@
 //  Created by Axel Martinez on 25/09/2026.
 //
 
-import ContainerSystem
+import ContainersCore
 import Foundation
 
 /// A search kept under a name, which the bar over the reports offers beside

@@ -7,16 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		773509582F34FC7D00C5471F /* libContainerSystem.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 773509102F34EA2F00C5471F /* libContainerSystem.dylib */; };
-		77350BA92F35B17100C5471F /* libContainerSystem.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 773509102F34EA2F00C5471F /* libContainerSystem.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		77350BAB2F35B53700C5471F /* libContainerSystem.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 773509102F34EA2F00C5471F /* libContainerSystem.dylib */; };
-		77350BAC2F35B53700C5471F /* libContainerSystem.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 773509102F34EA2F00C5471F /* libContainerSystem.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		773509582F34FC7D00C5471F /* libContainersCore.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 773509102F34EA2F00C5471F /* libContainersCore.dylib */; };
+		77350BA92F35B17100C5471F /* libContainersCore.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 773509102F34EA2F00C5471F /* libContainersCore.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		77350BAB2F35B53700C5471F /* libContainersCore.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 773509102F34EA2F00C5471F /* libContainersCore.dylib */; };
+		77350BAC2F35B53700C5471F /* libContainersCore.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 773509102F34EA2F00C5471F /* libContainersCore.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		77C44F1B2F698D0600167C4D /* Containerization in Frameworks */ = {isa = PBXBuildFile; productRef = 77C44F1A2F698D0600167C4D /* Containerization */; };
 		77C44F1D2F698D0600167C4D /* ContainerizationArchive in Frameworks */ = {isa = PBXBuildFile; productRef = 77C44F1C2F698D0600167C4D /* ContainerizationArchive */; };
 		77C44F1F2F698D0600167C4D /* ContainerizationEXT4 in Frameworks */ = {isa = PBXBuildFile; productRef = 77C44F1E2F698D0600167C4D /* ContainerizationEXT4 */; };
 		77C44F212F698D0600167C4D /* ContainerizationExtras in Frameworks */ = {isa = PBXBuildFile; productRef = 77C44F202F698D0600167C4D /* ContainerizationExtras */; };
 		77C44F232F698D0600167C4D /* ContainerizationIO in Frameworks */ = {isa = PBXBuildFile; productRef = 77C44F222F698D0600167C4D /* ContainerizationIO */; };
 		77C44F252F698E9A00167C4D /* ContainerizationOCI in Frameworks */ = {isa = PBXBuildFile; productRef = 77C44F242F698E9A00167C4D /* ContainerizationOCI */; };
+		A1C0F16E2FB0000100C0FFEE /* Configuration in Frameworks */ = {isa = PBXBuildFile; productRef = A1C0F16C2FB0000100C0FFEE /* Configuration */; };
+		A1C0F16F2FB0000100C0FFEE /* ConfigurationTOML in Frameworks */ = {isa = PBXBuildFile; productRef = A1C0F16D2FB0000100C0FFEE /* ConfigurationTOML */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -25,21 +27,21 @@
 			containerPortal = 9829EC3A2E17BA3C00A9F8D3 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 7735090F2F34EA2F00C5471F;
-			remoteInfo = ContainerSystem;
+			remoteInfo = ContainersCore;
 		};
 		7735094D2F34EB8100C5471F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 9829EC3A2E17BA3C00A9F8D3 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 7735090F2F34EA2F00C5471F;
-			remoteInfo = ContainerSystem;
+			remoteInfo = ContainersCore;
 		};
 		77350BAD2F35B53700C5471F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 9829EC3A2E17BA3C00A9F8D3 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 7735090F2F34EA2F00C5471F;
-			remoteInfo = ContainerSystem;
+			remoteInfo = ContainersCore;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -50,7 +52,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				77350BA92F35B17100C5471F /* libContainerSystem.dylib in Embed Libraries */,
+				77350BA92F35B17100C5471F /* libContainersCore.dylib in Embed Libraries */,
 			);
 			name = "Embed Libraries";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -61,7 +63,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				77350BAC2F35B53700C5471F /* libContainerSystem.dylib in Embed Libraries */,
+				77350BAC2F35B53700C5471F /* libContainersCore.dylib in Embed Libraries */,
 			);
 			name = "Embed Libraries";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -69,8 +71,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		773508642F34E40500C5471F /* ContainerSystemTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ContainerSystemTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		773509102F34EA2F00C5471F /* libContainerSystem.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libContainerSystem.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		773508642F34E40500C5471F /* ContainersCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ContainersCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		773509102F34EA2F00C5471F /* libContainersCore.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libContainersCore.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		9829EC422E17BA3C00A9F8D3 /* Containers.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Containers.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1C0F1A12F80000000C0F1A1 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -86,14 +88,14 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		773508652F34E40500C5471F /* ContainerSystemTests */ = {
+		773508652F34E40500C5471F /* ContainersCoreTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = ContainerSystemTests;
+			path = ContainersCoreTests;
 			sourceTree = "<group>";
 		};
-		77C44F6E2F69C4EE00167C4D /* ContainerSystem */ = {
+		77C44F6E2F69C4EE00167C4D /* ContainersCore */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = ContainerSystem;
+			path = ContainersCore;
 			sourceTree = "<group>";
 		};
 		9829EC442E17BA3C00A9F8D3 /* Containers */ = {
@@ -111,7 +113,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				77350BAB2F35B53700C5471F /* libContainerSystem.dylib in Frameworks */,
+				77350BAB2F35B53700C5471F /* libContainersCore.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -125,6 +127,8 @@
 				77C44F1F2F698D0600167C4D /* ContainerizationEXT4 in Frameworks */,
 				77C44F212F698D0600167C4D /* ContainerizationExtras in Frameworks */,
 				77C44F1B2F698D0600167C4D /* Containerization in Frameworks */,
+				A1C0F16E2FB0000100C0FFEE /* Configuration in Frameworks */,
+				A1C0F16F2FB0000100C0FFEE /* ConfigurationTOML in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -132,7 +136,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				773509582F34FC7D00C5471F /* libContainerSystem.dylib in Frameworks */,
+				773509582F34FC7D00C5471F /* libContainersCore.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -143,8 +147,8 @@
 			isa = PBXGroup;
 			children = (
 				9829EC442E17BA3C00A9F8D3 /* Containers */,
-				77C44F6E2F69C4EE00167C4D /* ContainerSystem */,
-				773508652F34E40500C5471F /* ContainerSystemTests */,
+				77C44F6E2F69C4EE00167C4D /* ContainersCore */,
+				773508652F34E40500C5471F /* ContainersCoreTests */,
 				A1C0F1A22F80000000C0F1A1 /* Configuration */,
 				9829EC432E17BA3C00A9F8D3 /* Products */,
 			);
@@ -154,8 +158,8 @@
 			isa = PBXGroup;
 			children = (
 				9829EC422E17BA3C00A9F8D3 /* Containers.app */,
-				773508642F34E40500C5471F /* ContainerSystemTests.xctest */,
-				773509102F34EA2F00C5471F /* libContainerSystem.dylib */,
+				773508642F34E40500C5471F /* ContainersCoreTests.xctest */,
+				773509102F34EA2F00C5471F /* libContainersCore.dylib */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -181,9 +185,9 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
-		773508632F34E40500C5471F /* ContainerSystemTests */ = {
+		773508632F34E40500C5471F /* ContainersCoreTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 7735086A2F34E40500C5471F /* Build configuration list for PBXNativeTarget "ContainerSystemTests" */;
+			buildConfigurationList = 7735086A2F34E40500C5471F /* Build configuration list for PBXNativeTarget "ContainersCoreTests" */;
 			buildPhases = (
 				773508602F34E40500C5471F /* Sources */,
 				773508612F34E40500C5471F /* Frameworks */,
@@ -197,18 +201,18 @@
 				77350BAE2F35B53700C5471F /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				773508652F34E40500C5471F /* ContainerSystemTests */,
+				773508652F34E40500C5471F /* ContainersCoreTests */,
 			);
-			name = ContainerSystemTests;
+			name = ContainersCoreTests;
 			packageProductDependencies = (
 			);
 			productName = ContainersTests;
-			productReference = 773508642F34E40500C5471F /* ContainerSystemTests.xctest */;
+			productReference = 773508642F34E40500C5471F /* ContainersCoreTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		7735090F2F34EA2F00C5471F /* ContainerSystem */ = {
+		7735090F2F34EA2F00C5471F /* ContainersCore */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 773509112F34EA2F00C5471F /* Build configuration list for PBXNativeTarget "ContainerSystem" */;
+			buildConfigurationList = 773509112F34EA2F00C5471F /* Build configuration list for PBXNativeTarget "ContainersCore" */;
 			buildPhases = (
 				7735090C2F34EA2F00C5471F /* Headers */,
 				7735090D2F34EA2F00C5471F /* Sources */,
@@ -219,9 +223,9 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				77C44F6E2F69C4EE00167C4D /* ContainerSystem */,
+				77C44F6E2F69C4EE00167C4D /* ContainersCore */,
 			);
-			name = ContainerSystem;
+			name = ContainersCore;
 			packageProductDependencies = (
 				77C44F1A2F698D0600167C4D /* Containerization */,
 				77C44F1C2F698D0600167C4D /* ContainerizationArchive */,
@@ -229,9 +233,11 @@
 				77C44F202F698D0600167C4D /* ContainerizationExtras */,
 				77C44F222F698D0600167C4D /* ContainerizationIO */,
 				77C44F242F698E9A00167C4D /* ContainerizationOCI */,
+				A1C0F16C2FB0000100C0FFEE /* Configuration */,
+				A1C0F16D2FB0000100C0FFEE /* ConfigurationTOML */,
 			);
-			productName = ContainerSystem;
-			productReference = 773509102F34EA2F00C5471F /* libContainerSystem.dylib */;
+			productName = ContainersCore;
+			productReference = 773509102F34EA2F00C5471F /* libContainersCore.dylib */;
 			productType = "com.apple.product-type.library.dynamic";
 		};
 		9829EC412E17BA3C00A9F8D3 /* Containers */ = {
@@ -291,6 +297,8 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				77C44F192F698D0600167C4D /* XCRemoteSwiftPackageReference "containerization" */,
+				A1C0F16A2FB0000100C0FFEE /* XCRemoteSwiftPackageReference "swift-configuration" */,
+				A1C0F16B2FB0000100C0FFEE /* XCRemoteSwiftPackageReference "swift-configuration-toml" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9829EC432E17BA3C00A9F8D3 /* Products */;
@@ -298,8 +306,8 @@
 			projectRoot = "";
 			targets = (
 				9829EC412E17BA3C00A9F8D3 /* Containers */,
-				7735090F2F34EA2F00C5471F /* ContainerSystem */,
-				773508632F34E40500C5471F /* ContainerSystemTests */,
+				7735090F2F34EA2F00C5471F /* ContainersCore */,
+				773508632F34E40500C5471F /* ContainersCoreTests */,
 			);
 		};
 /* End PBXProject section */
@@ -369,17 +377,17 @@
 /* Begin PBXTargetDependency section */
 		773509152F34EA4700C5471F /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 7735090F2F34EA2F00C5471F /* ContainerSystem */;
+			target = 7735090F2F34EA2F00C5471F /* ContainersCore */;
 			targetProxy = 773509142F34EA4700C5471F /* PBXContainerItemProxy */;
 		};
 		7735094E2F34EB8100C5471F /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 7735090F2F34EA2F00C5471F /* ContainerSystem */;
+			target = 7735090F2F34EA2F00C5471F /* ContainersCore */;
 			targetProxy = 7735094D2F34EB8100C5471F /* PBXContainerItemProxy */;
 		};
 		77350BAE2F35B53700C5471F /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 7735090F2F34EA2F00C5471F /* ContainerSystem */;
+			target = 7735090F2F34EA2F00C5471F /* ContainersCore */;
 			targetProxy = 77350BAD2F35B53700C5471F /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -696,7 +704,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		7735086A2F34E40500C5471F /* Build configuration list for PBXNativeTarget "ContainerSystemTests" */ = {
+		7735086A2F34E40500C5471F /* Build configuration list for PBXNativeTarget "ContainersCoreTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				7735086B2F34E40500C5471F /* Debug */,
@@ -705,7 +713,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		773509112F34EA2F00C5471F /* Build configuration list for PBXNativeTarget "ContainerSystem" */ = {
+		773509112F34EA2F00C5471F /* Build configuration list for PBXNativeTarget "ContainersCore" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				773509122F34EA2F00C5471F /* Debug */,
@@ -739,8 +747,24 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/apple/containerization";
 			requirement = {
+				kind = exactVersion;
+				version = 0.53.0;
+			};
+		};
+		A1C0F16A2FB0000100C0FFEE /* XCRemoteSwiftPackageReference "swift-configuration" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-configuration";
+			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 0.28.0;
+				minimumVersion = 1.2.0;
+			};
+		};
+		A1C0F16B2FB0000100C0FFEE /* XCRemoteSwiftPackageReference "swift-configuration-toml" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/mattt/swift-configuration-toml";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
@@ -775,6 +799,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 77C44F192F698D0600167C4D /* XCRemoteSwiftPackageReference "containerization" */;
 			productName = ContainerizationOCI;
+		};
+		A1C0F16C2FB0000100C0FFEE /* Configuration */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A1C0F16A2FB0000100C0FFEE /* XCRemoteSwiftPackageReference "swift-configuration" */;
+			productName = Configuration;
+		};
+		A1C0F16D2FB0000100C0FFEE /* ConfigurationTOML */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A1C0F16B2FB0000100C0FFEE /* XCRemoteSwiftPackageReference "swift-configuration-toml" */;
+			productName = ConfigurationTOML;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

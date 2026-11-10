@@ -10,7 +10,7 @@ import TipKit
 struct AddFirstImageTip: Tip {
     @Parameter static var shouldShow: Bool = false
 
-    var title: Text { Text("Start with an image") }
+    var title: Text { Text("Start with an Image") }
     var message: Text? {
         Text(
             "Add your first image to get started. Images are the foundation for running containers."
@@ -23,6 +23,6 @@ struct AddFirstImageTip: Tip {
 }
 
 struct RunContainerTip: Tip {
-    var title: Text { Text("Run a container") }
+    var title: Text { Text("Run a Container") }
     var message: Text? { Text("Create and run a new container from this image.") }
 }

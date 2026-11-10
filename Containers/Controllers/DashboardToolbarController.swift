@@ -15,6 +15,7 @@ final class DashboardToolbarController: NSObject {
     var title = ""
     var showsFilter = false
     var showsAdd = true
+    var isAddEnabled = true
     var showsClear = false
     var isFilterOn = false
     var selectionItems: [SelectionToolbarItem] = []
@@ -184,6 +185,8 @@ final class DashboardToolbarController: NSObject {
             ) {
                 item.isEnabled =
                     isEnabled && enabledSelectionItems.contains(selectionItem)
+            } else if item.itemIdentifier == Self.addIdentifier {
+                item.isEnabled = isEnabled && isAddEnabled
             } else {
                 item.isEnabled = isEnabled
             }

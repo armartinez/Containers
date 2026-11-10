@@ -10,6 +10,9 @@ import SwiftUI
 struct CreateImageMethod: View {
     @Binding var selectedMethod: CreateImageView.CreationMethod?
 
+    /// Building runs the builder's virtual machine, which can't run beside the CLI's API server.
+    var canBuild = true
+
     let onSelection: (CreateImageView.CreationMethod) -> Void
 
     var body: some View {
@@ -34,18 +37,32 @@ struct CreateImageMethod: View {
                     .fontWeight(.bold)
                     .padding(.leading, 8)
 
-                Picker("", selection: $selectedMethod) {
+                // A radio group ignores `disabled` on a single option, so each option is a picker
+                // of its own, sharing the selection, that can be disabled as a whole.
+                VStack(alignment: .leading, spacing: 6) {
                     ForEach(CreateImageView.CreationMethod.allCases, id: \.self) { method in
-                        Text(method.rawValue)
-                            .font(.body)
-                            .tag(method as CreateImageView.CreationMethod?)
+                        Picker("", selection: $selectedMethod) {
+                            Text(method.rawValue)
+                                .font(.body)
+                                .tag(method as CreateImageView.CreationMethod?)
+                        }
+                        .pickerStyle(.radioGroup)
+                        .labelsHidden()
+                        .disabled(method == .build && !canBuild)
                     }
                 }
-                .pickerStyle(.radioGroup)
+                .padding(.leading, 8)
                 .onChange(of: selectedMethod) { _, newValue in
                     if let method = newValue {
                         onSelection(method)
                     }
+                }
+
+                if !canBuild {
+                    Text("Images can’t be built while the container CLI is using this data folder.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .padding(.leading, 8)
                 }
             }
         }

@@ -5,6 +5,7 @@
 //  Created by Axel Martinez on 02/02/26.
 //
 
+import ContainersCore
 import Foundation
 
 @propertyWrapper
@@ -39,11 +40,22 @@ extension UserDefaults {
     @UserDefault(key: "shutdownSystemTimeoutSeconds", defaultValue: 20)
     static var shutdownSystemTimeoutSeconds: Int32
 
+    static let appIconPlacementKey = "appIconPlacement"
+
+    static var appIconPlacement: AppIconPlacement {
+        UserDefaults.standard.string(forKey: appIconPlacementKey).flatMap(AppIconPlacement.init(rawValue:)) ?? .dockAndMenuBar
+    }
+
+    static let startsSystemOnOpenKey = "startsSystemOnOpen"
+
+    @UserDefault(key: startsSystemOnOpenKey, defaultValue: true)
+    static var startsSystemOnOpen: Bool
+
     private static let applicationDataRootKey = "applicationDataRoot"
     private static let applicationDataRootBookmarkKey = "applicationDataRootBookmark"
     private static let resolverDirectoryBookmarkKey = "resolverDirectoryBookmark"
 
-    /// Named for the bundle, as Apple's `container` names its root.
+    /// Named for the bundle
     static var defaultAppRoot: URL {
         applicationSupport.appendingPathComponent(
             Foundation.Bundle.main.bundleIdentifier ?? "app.containers.Containers"
@@ -89,6 +101,62 @@ extension UserDefaults {
 
     static var usesDefaultApplicationDataRoot: Bool {
         applicationDataRootBookmarkData == nil && applicationDataRoot.standardizedFileURL == defaultAppRoot.standardizedFileURL
+    }
+
+    private static let systemModeKey = "systemMode"
+
+    /// Whether the app sets up its own container system or uses the container CLI's, or `nil` until the user chooses.
+    static var systemMode: ContainerSystem.Mode? {
+        get {
+            UserDefaults.standard.string(forKey: systemModeKey).flatMap(ContainerSystem.Mode.init(rawValue:))
+        }
+        set {
+            UserDefaults.standard.set(newValue?.rawValue, forKey: systemModeKey)
+        }
+    }
+
+    static var systemDataRoot: URL {
+        switch systemMode {
+        case .cliCompatibility: cliDataRoot ?? ContainerCLI.defaultAppRoot
+        case .default, nil: applicationDataRoot
+        }
+    }
+
+    private static let cliDataRootBookmarkKey = "cliDataRootBookmark"
+
+    static var cliDataRoot: URL? {
+        if let bookmarkData = UserDefaults.standard.data(forKey: cliDataRootBookmarkKey) {
+            var isStale = false
+
+            guard
+                let url = try? URL(
+                    resolvingBookmarkData: bookmarkData,
+                    options: [.withSecurityScope],
+                    relativeTo: nil,
+                    bookmarkDataIsStale: &isStale
+                )
+            else {
+                UserDefaults.standard.removeObject(forKey: cliDataRootBookmarkKey)
+
+                return nil
+            }
+
+            if isStale, let refreshedBookmark = try? url.bookmarkData(options: [.withSecurityScope], includingResourceValuesForKeys: nil, relativeTo: nil) {
+                setCLIDataRoot(bookmarkData: refreshedBookmark)
+            }
+
+            return url
+        }
+
+        guard applicationDataRootBookmarkData != nil, applicationDataRoot.isSameFolder(as: ContainerCLI.defaultAppRoot) else {
+            return nil
+        }
+
+        return applicationDataRoot
+    }
+
+    static func setCLIDataRoot(bookmarkData: Data) {
+        UserDefaults.standard.set(bookmarkData, forKey: cliDataRootBookmarkKey)
     }
 
     static func setApplicationDataRoot(_ url: URL, bookmarkData: Data?) {

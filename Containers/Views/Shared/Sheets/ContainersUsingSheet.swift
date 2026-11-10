@@ -5,7 +5,7 @@
 //  Created by Axel Martinez on 16/09/2026.
 //
 
-import ContainerSystem
+import ContainersCore
 import SwiftUI
 
 /// The containers an image or a volume is used by, each opening into its own
@@ -43,14 +43,12 @@ struct ContainersUsingSheet: View {
                     dismiss()
                 } label: {
                     Text("Done")
-                        .frame(width: .sheetButtonLabelWidth)
+                        .frame(minWidth: .sheetButtonLabelWidth)
                 }
                 .defaultAction(enabled: true)
             }
         )
-        .task {
-            await loadContainers()
-        }
+        .task(loadContainers)
     }
 
     @ViewBuilder

@@ -1,4 +1,4 @@
-name: Build containers
+name: Build & Test
 
 permissions:
   contents: read

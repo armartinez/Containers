@@ -6,34 +6,18 @@
 //
 
 import AppKit
-import ContainerSystem
+import ContainersCore
 import SwiftUI
 import TipKit
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        // Start with dock icon showing since dashboard opens on launch
-        NSApp.setActivationPolicy(.regular)
-
-        // Observe window close notifications
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(windowWillClose(_:)),
-            name: NSWindow.willCloseNotification,
-            object: nil
-        )
+    // Before launch finishes, so a menu bar only app shows no Dock icon until a window opens.
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(UserDefaults.appIconPlacement.activationPolicy)
     }
 
-    @objc func windowWillClose(_ notification: Notification) {
-        guard let window = notification.object as? NSWindow else { return }
-
-        // Check if this is the dashboard window by title
-        if window.title == "Containers" {
-            // Hide dock icon immediately when dashboard closes
-            DispatchQueue.main.async {
-                NSApp.setActivationPolicy(.accessory)
-            }
-        }
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.beginUpdatingActivationPolicy()
     }
 }
 
@@ -41,26 +25,35 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 struct ContainersApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
+    @AppStorage(UserDefaults.appIconPlacementKey) private var appIconPlacement: AppIconPlacement = .dockAndMenuBar
+
+    @State private var containerSystem: ContainerSystem
+
     // MARK: Domain Managers
     @State private var containerManager = ContainerManager()
     @State private var imageManager = ImageManager()
     @State private var volumeManager = VolumeManager()
     @State private var networkManager = NetworkManager()
     @State private var reportManager: ReportManager
-    @State private var systemManager: SystemManager
 
     // MARK: Utilities
     @State private var activityCenter: ActivityCenter
     @State private var systemActions: SystemActions
 
     init() {
-        let systemManager = SystemManager()
+        // ContainerSystem is initalized here to allow for testability and previews
+        let containerSystem = ContainerSystem.shared
         let reportManager = ReportManager()
+        let systemActions = SystemActions(containerSystem: containerSystem)
 
-        _systemManager = State(initialValue: systemManager)
+        // The dashboard asks for a mode the first time it opens.
+        containerSystem.mode = UserDefaults.systemMode ?? .default
+        containerSystem.resolverDirectory = UserDefaults.resolverDirectory
+
+        _containerSystem = State(initialValue: containerSystem)
         _reportManager = State(initialValue: reportManager)
         _activityCenter = State(initialValue: ActivityCenter(reports: reportManager))
-        _systemActions = State(initialValue: SystemActions(manager: systemManager))
+        _systemActions = State(initialValue: systemActions)
 
         do {
             try Tips.configure()
@@ -85,15 +78,11 @@ struct ContainersApp: App {
                     .environment(containerManager)
                     .environment(imageManager)
                     .environment(volumeManager)
-                    .environment(systemManager)
+                    .environment(containerSystem)
                     .environment(networkManager)
                     .environment(activityCenter)
                     .environment(reportManager)
                     .environment(systemActions)
-                    .onAppear {
-                        // Show dock icon when dashboard appears
-                        NSApp.setActivationPolicy(.regular)
-                    }
             }
         )
         .defaultSize(width: 800, height: 520)
@@ -103,17 +92,15 @@ struct ContainersApp: App {
         .handlesExternalEvents(matching: ["\(AppLink.scheme)://"])
 
         MenuBarExtra(
+            isInserted: showsMenuBarItem,
             content: {
                 MenuBarItem()
-                    .environment(systemManager)
+                    .environment(containerSystem)
                     .environment(systemActions)
             },
             label: {
-                Image(
-                    systemManager.status == .running
-                        ? "container.stack.fill" : "container.stack"
-                )
-                .font(.system(size: 28))
+                Image(menuBarSymbol)
+                    .font(.system(size: 28))
             }
         )
         .menuBarExtraStyle(.menu)
@@ -121,7 +108,7 @@ struct ContainersApp: App {
         Window("Settings", id: Self.settingsWindowID) {
             SettingsView()
                 .environment(networkManager)
-                .environment(systemManager)
+                .environment(containerSystem)
         }
         .defaultSize(width: 600, height: 400)
         .defaultPosition(.center)
@@ -134,6 +121,8 @@ struct ContainersApp: App {
             placeholder: DetailPlaceholder.container
         ) { id in
             ContainerDetailWindow(id: id)
+                .environment(containerSystem)
+                .environment(networkManager)
                 .environment(containerManager)
                 .environment(volumeManager)
                 .environment(imageManager)
@@ -147,11 +136,13 @@ struct ContainersApp: App {
             placeholder: DetailPlaceholder.image
         ) { reference in
             ImageDetailWindow(imageReference: reference)
+                .environment(containerSystem)
+                .environment(networkManager)
                 .environment(imageManager)
                 .environment(containerManager)
                 .environment(volumeManager)
-                .environment(activityCenter)
                 .environment(reportManager)
+                .environment(activityCenter)
         }
 
         windowGroup(
@@ -171,6 +162,28 @@ struct ContainersApp: App {
         ) { reportID in
             ReportDetailWindow(id: reportID)
                 .environment(reportManager)
+        }
+    }
+
+    /// Taking the item out of the menu bar leaves the Dock icon, so the app is never hidden from both.
+    private var showsMenuBarItem: Binding<Bool> {
+        Binding(
+            get: { appIconPlacement.showsInMenuBar },
+            set: { isShown in
+                guard !isShown else { return }
+
+                appIconPlacement = .dock
+                NSApp.updateActivationPolicy()
+            }
+        )
+    }
+
+    /// Slashed beside the CLI, since its API server runs the containers and the app's own system is idle.
+    private var menuBarSymbol: String {
+        switch containerSystem.status {
+        case .running: "container.stack.fill"
+        case .readOnly: "container.stack.slash"
+        case .starting, .stopping, .notStarted, .failed: "container.stack"
         }
     }
 
@@ -206,7 +219,7 @@ struct ContainersApp: App {
                 Button {
                     openWindow(id: ContainersApp.settingsWindowID)
                 } label: {
-                    Label("Settings...", systemImage: "gearshape")
+                    Label("Settings…", systemImage: "gearshape")
                 }
             }
         }

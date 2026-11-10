@@ -1,4 +1,4 @@
-name: Publish containers release
+name: Publish Release
 
 permissions:
   contents: write

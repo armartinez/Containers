@@ -5,10 +5,10 @@
 //  Created by Axel Martinez on 14/09/2026.
 //
 
-import ContainerSystem
+import ContainersCore
 import SwiftUI
 
-/// A row's activity mark: a filling pie, a failure mark, or a retry button once stopped.
+/// A row's task mark: a filling pie, a failure mark, or a retry button once stopped.
 struct RowProgressIndicator: View {
     /// Glyphs are sized to it, since a font size draws them larger than the pie.
     private static let markSize: CGFloat = 16
@@ -16,7 +16,7 @@ struct RowProgressIndicator: View {
     /// Centres every mark alike, however wide its glyph draws.
     private static let slot: CGFloat = 18
 
-    let activity: ActivitySnapshot
+    let task: ContainerSystemTask.Snapshot
     /// Passed in: AppKit can update a cell after its row is gone, with no environment left.
     let activityCenter: ActivityCenter
     let openReport: (String) -> Void
@@ -28,9 +28,9 @@ struct RowProgressIndicator: View {
 
     var body: some View {
         Group {
-            if activity.isStopped, activity.canRetry {
+            if task.isStopped, task.canRetry {
                 Button {
-                    activityCenter.retry(activity.id)
+                    activityCenter.retry(task.id)
                 } label: {
                     Image(systemName: "arrow.clockwise.circle")
                         .resizable()
@@ -54,10 +54,10 @@ struct RowProgressIndicator: View {
                 .buttonStyle(.plain)
                 .help(helpText)
                 .popover(isPresented: $isShowingDetails, arrowEdge: .bottom) {
-                    ActivityDetails(
-                        activity: activity,
-                        onStop: { activityCenter.stop(activity.id) },
-                        onRetry: { activityCenter.retry(activity.id) },
+                    TaskDetails(
+                        task: task,
+                        onStop: { activityCenter.stop(task.id) },
+                        onRetry: { activityCenter.retry(task.id) },
                         onOpenReport: { reportID in
                             isShowingDetails = false
                             openReport(reportID)
@@ -68,20 +68,20 @@ struct RowProgressIndicator: View {
         }
         // Stopping swaps the mark for the retry button; the popover mustn't
         // reappear on its own when the work runs again.
-        .onChange(of: activity.isStopped) { _, _ in
+        .onChange(of: task.isStopped) { _, _ in
             isShowingDetails = false
         }
     }
 
     @ViewBuilder
     private var mark: some View {
-        if activity.failureMessage != nil {
+        if task.failureMessage != nil {
             Image(systemName: isHovering ? "info.circle" : Self.failureSymbol)
                 .resizable()
                 .scaledToFit()
                 .frame(width: Self.markSize, height: Self.markSize)
                 .foregroundStyle(.secondary)
-        } else if activity.isStopped {
+        } else if task.isStopped {
             Image(systemName: "stop.circle")
                 .resizable()
                 .scaledToFit()
@@ -99,9 +99,9 @@ struct RowProgressIndicator: View {
                 Circle()
                     .strokeBorder(.foreground, lineWidth: 1)
 
-                PieSlice(fraction: activity.fraction ?? 0)
+                PieSlice(fraction: task.fraction ?? 0)
                     .fill(.foreground)
-                    .animation(.easeOut(duration: 0.25), value: activity.fraction)
+                    .animation(.easeOut(duration: 0.25), value: task.fraction)
             }
             .frame(width: Self.markSize, height: Self.markSize)
             .rowTint(.blue)
@@ -109,15 +109,15 @@ struct RowProgressIndicator: View {
     }
 
     private var helpText: String {
-        if activity.failureMessage != nil { return "Show Error" }
-        if activity.isStopped { return "Stopped" }
-        return "Show Progress"
+        if task.failureMessage != nil { return "Show error" }
+        if task.isStopped { return "Stopped" }
+        return "Show progress"
     }
 }
 
 /// Stop, Retry and Delete for rows that stand for work.
-struct ActivityMenuItems: View {
-    let work: [ActivitySnapshot]
+struct TaskMenuItems: View {
+    let work: [ContainerSystemTask.Snapshot]
     /// Not read from the environment, for the same reason as the mark's.
     let activityCenter: ActivityCenter
     let reportManager: ReportManager
@@ -131,13 +131,13 @@ struct ActivityMenuItems: View {
 
         if !running.isEmpty {
             Button("Stop", systemImage: "stop") {
-                for activity in running { activityCenter.stop(activity.id) }
+                for task in running { activityCenter.stop(task.id) }
             }
         }
 
         if !retryable.isEmpty {
             Button("Retry", systemImage: "arrow.clockwise") {
-                for activity in retryable { activityCenter.retry(activity.id) }
+                for task in retryable { activityCenter.retry(task.id) }
             }
         }
 
@@ -151,7 +151,7 @@ struct ActivityMenuItems: View {
                 systemImage: "trash",
                 role: .destructive
             ) {
-                for activity in ended { activityCenter.remove(activity.id) }
+                for task in ended { activityCenter.remove(task.id) }
 
                 Task { await reportManager.delete(ids: reported) }
             }
@@ -159,8 +159,8 @@ struct ActivityMenuItems: View {
     }
 }
 
-private struct ActivityDetails: View {
-    let activity: ActivitySnapshot
+private struct TaskDetails: View {
+    let task: ContainerSystemTask.Snapshot
     let onStop: () -> Void
     let onRetry: () -> Void
     let onOpenReport: (String) -> Void
@@ -181,21 +181,21 @@ private struct ActivityDetails: View {
                 account
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                if activity.isExecuting {
+                if task.isExecuting {
                     button("xmark.circle.fill", "Stop the work", action: onStop)
-                } else if activity.canRetry {
+                } else if task.canRetry {
                     button("arrow.clockwise.circle.fill", "Run it again", action: onRetry)
                 }
 
-                if let reportID = activity.reportID {
+                if let reportID = task.reportID {
                     button("arrow.up.forward.circle", "Show the report of what happened") {
                         onOpenReport(reportID)
                     }
                 }
             }
 
-            if activity.isExecuting {
-                Text(hovered ?? activity.detail)
+            if task.isExecuting {
+                Text(hovered ?? task.detail)
                     .font(.caption)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
@@ -213,12 +213,12 @@ private struct ActivityDetails: View {
 
     @ViewBuilder
     private var account: some View {
-        if let failureMessage = activity.failureMessage {
+        if let failureMessage = task.failureMessage {
             Text(hovered ?? failureMessage)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-        } else if activity.isStopped {
+        } else if task.isStopped {
             Text(hovered ?? "Stopped")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -226,7 +226,7 @@ private struct ActivityDetails: View {
         } else {
             // Linear for both, or unmeasured work draws a spinner.
             Group {
-                if let fraction = activity.fraction {
+                if let fraction = task.fraction {
                     ProgressView(value: fraction)
                 } else {
                     ProgressView()
@@ -258,15 +258,15 @@ private struct ActivityDetails: View {
     }
 
     private var heading: String {
-        if activity.failureMessage != nil {
-            return activity.failureTitle ?? "Something went wrong"
+        if task.failureMessage != nil {
+            return task.failureTitle ?? "Something went wrong"
         }
 
-        if activity.isStopped {
+        if task.isStopped {
             return "Stopped"
         }
 
-        return activity.step.isEmpty ? "Starting…" : activity.step
+        return task.step.isEmpty ? "Starting…" : task.step
     }
 }
 

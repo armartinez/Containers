@@ -8,13 +8,15 @@
 import SwiftUI
 
 extension View {
-    /// Disabled, it drops to a plain button, as AppKit's default button does.
+    /// Answers Return; disabled, it drops to a plain button, as AppKit's default button does.
     @ViewBuilder
     func defaultAction(enabled: Bool) -> some View {
         if enabled {
             buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
         } else {
             buttonStyle(.bordered).disabled(true)
+                .keyboardShortcut(.defaultAction)
         }
     }
 }

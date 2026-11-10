@@ -15,6 +15,7 @@ struct DashboardToolbarBinder: NSViewRepresentable {
     let isEnabled: Bool
     let showsFilter: Bool
     let showsAdd: Bool
+    let isAddEnabled: Bool
     let showsClear: Bool
     let isFilterOn: Bool
     let selectionItems: [SelectionToolbarItem]
@@ -42,6 +43,7 @@ struct DashboardToolbarBinder: NSViewRepresentable {
         controller.isEnabled = isEnabled
         controller.showsFilter = showsFilter
         controller.showsAdd = showsAdd
+        controller.isAddEnabled = isAddEnabled
         controller.showsClear = showsClear
         controller.isFilterOn = isFilterOn
         controller.selectionItems = selectionItems

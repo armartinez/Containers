@@ -36,14 +36,15 @@ struct ItemPicker: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             Text(title)
+                .font(.headline)
 
             FilterField(text: $searchText)
             listArea
             footer
         }
-        .padding(14)
+        .padding(20)
         .frame(width: 440, height: 416)
     }
 
@@ -84,26 +85,18 @@ struct ItemPicker: View {
                 dismiss()
             }
             .buttonStyle(.bordered)
+            .keyboardShortcut(.cancelAction)
 
             actionButton
         }
         .controlSize(.regular)
         .frame(maxWidth: .infinity)
-        .padding(.top, 4)
+        .padding(.top, 8)
     }
 
-    // The prominent style keeps its tint when disabled, so with nothing picked
-    // the button falls back to the plain bordered face.
-    @ViewBuilder
     private var actionButton: some View {
-        if selectedID == nil {
-            Button(actionTitle) {}
-                .buttonStyle(.bordered)
-                .disabled(true)
-        } else {
-            Button(actionTitle, action: chooseSelectedItem)
-                .buttonStyle(.borderedProminent)
-        }
+        Button(actionTitle, action: chooseSelectedItem)
+            .defaultAction(enabled: selectedID != nil)
     }
 
     private func chooseSelectedItem() {

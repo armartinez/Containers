@@ -5,7 +5,7 @@
 //  Created by Axel Martinez on 2026/02/14.
 //
 
-import ContainerSystem
+import ContainersCore
 import SwiftUI
 
 struct ImageInfo: View {

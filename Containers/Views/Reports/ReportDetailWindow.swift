@@ -5,7 +5,7 @@
 //  Created by Axel Martinez on 16/09/2026.
 //
 
-import ContainerSystem
+import ContainersCore
 import SwiftUI
 
 struct ReportDetailWindow: View {
@@ -53,9 +53,7 @@ struct ReportDetailWindow: View {
                 onSearch: { search = $0 }
             )
         )
-        .task {
-            await load()
-        }
+        .task(load)
     }
 
     private func load() async {

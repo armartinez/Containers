@@ -6,14 +6,16 @@
 //
 
 import AppKit
-import ContainerSystem
+import ContainersCore
 import SwiftUI
 import TipKit
 
 struct DashboardView: View {
-    @Environment(SystemManager.self) private var system
+    @Environment(ContainerSystem.self) private var containerSystem
+    @Environment(SystemActions.self) private var systemActions
     @Environment(ActivityCenter.self) private var activityCenter
     @Environment(ReportManager.self) private var reportManager
+    @Environment(\.openWindow) private var openWindow
 
     @SwiftUI.State private var selectedTab: NavigationTab =
         NavigationTab(rawValue: UserDefaults.lastSelectedTab) ?? .images
@@ -24,6 +26,9 @@ struct DashboardView: View {
     @SwiftUI.State private var didCancelSetup: Bool = false
     @SwiftUI.State private var showWhatsNew: Bool = UserDefaults.shouldShowWhatsNew
     @SwiftUI.State private var showSystemSetup: Bool = false
+    /// After What's New, if it shows, since the two can't be on the window at once.
+    @SwiftUI.State private var showSystemMode: Bool =
+        UserDefaults.systemMode == nil && !UserDefaults.shouldShowWhatsNew
     @SwiftUI.State private var creationSheet: CreationSheet?
 
     private enum CreationSheet: Identifiable {
@@ -54,15 +59,20 @@ struct DashboardView: View {
     private let addFirstImageTip = AddFirstImageTip()
     private let runContainerTip = RunContainerTip()
 
-    private var isSystemRunning: Bool { system.status == .running }
+    private var isSystemRunning: Bool { containerSystem.isRunning }
+
+    /// Beside the CLI, nothing can be added: the folder is its API server's to write.
+    private var canAdd: Bool {
+        !containerSystem.isReadOnly
+    }
 
     private var containersBeingMade: Int {
-        activityCenter.activities(ofKind: .container).count
+        activityCenter.tasks(ofKind: .container).count
     }
 
     /// Only a first start, which has a folder to prepare, reports its steps.
     private var isMakingFolderReady: Bool {
-        system.status == .starting && system.setupProgress != nil
+        containerSystem.status == .starting && containerSystem.setupProgress != nil
     }
 
     @ViewBuilder private var tabContent: some View {
@@ -125,6 +135,7 @@ struct DashboardView: View {
                 isEnabled: isSystemRunning,
                 showsFilter: selectedTab == .containers,
                 showsAdd: selectedTab != .reports,
+                isAddEnabled: canAdd,
                 showsClear: hasErrors,
                 isFilterOn: runningContainersOnly,
                 selectionItems: selectedTab.selectionItems,
@@ -161,9 +172,7 @@ struct DashboardView: View {
             )
         )
         // A window opened onto a running system never sees it start.
-        .task {
-            await reportManager.refresh()
-        }
+        .task(reportManager.refresh)
         .task {
             // `.popoverTip` can't attach to an AppKit toolbar item.
             for await shouldDisplay in addFirstImageTip.shouldDisplayUpdates {
@@ -194,12 +203,15 @@ struct DashboardView: View {
                     }
                 }
                 .task {
-                    guard !self.isSystemRunning, !self.isFirstLaunch else {
+                    // Until a mode is chosen, its sheet starts the system.
+                    guard !self.isSystemRunning, !self.isFirstLaunch,
+                        UserDefaults.systemMode != nil, UserDefaults.startsSystemOnOpen
+                    else {
                         return
                     }
 
-                    try? await self.system.start(
-                        appRoot: UserDefaults.applicationDataRoot
+                    try? await self.containerSystem.start(
+                        appRoot: UserDefaults.systemDataRoot
                     )
                 }
                 .errorAlert($errorAlert)
@@ -212,6 +224,8 @@ struct DashboardView: View {
                         // A typed search could hide the row the link leads to.
                         selectedTab = .containers
                         searchText = ""
+                    case .reports where !reportManager.isAvailable:
+                        break
                     case .reports(let name):
                         // Replaces the current filters and any typed search.
                         selectedTab = .reports
@@ -227,16 +241,27 @@ struct DashboardView: View {
 
                     selectedTab = .containers
                 }
+                .onChange(of: systemActions.isAskingForKernel) { _, isAskingForKernel in
+                    guard isAskingForKernel else { return }
+
+                    didCancelSetup = false
+                    showSystemSetup = true
+                }
                 .onChange(of: isMakingFolderReady) { _, _ in
                     guard isMakingFolderReady, !showWhatsNew,
-                        !didCancelSetup
+                        !showSystemMode, !didCancelSetup
                     else {
                         return
                     }
 
                     showSystemSetup = true
                 }
-                .onChange(of: system.status) { _, status in
+                .onChange(of: containerSystem.status) { _, status in
+                    // Reports aren't kept beside the CLI.
+                    if selectedTab == .reports, !reportManager.isAvailable {
+                        selectedTab = .images
+                    }
+
                     // A run that ended clears the cancel, so the next can
                     // show the sheet.
                     guard status != .starting else { return }
@@ -250,6 +275,11 @@ struct DashboardView: View {
                 .sheet(
                     isPresented: $showWhatsNew,
                     onDismiss: {
+                        guard UserDefaults.systemMode != nil else {
+                            showSystemMode = true
+                            return
+                        }
+
                         showSystemSetup = isFirstLaunch || isMakingFolderReady
                     },
                     content: {
@@ -257,6 +287,13 @@ struct DashboardView: View {
                             UserDefaults.markCurrentVersionSeen()
                             showWhatsNew = false
                         }
+                    }
+                )
+                .sheet(
+                    isPresented: $showSystemMode,
+                    onDismiss: startChosenSystemMode,
+                    content: {
+                        SystemModeView(onChoose: chooseSystemMode)
                     }
                 )
                 .sheet(
@@ -304,8 +341,35 @@ struct DashboardView: View {
         Task { await reportManager.markRead(ids) }
     }
 
+    private func chooseSystemMode(_ mode: ContainerSystem.Mode) {
+        UserDefaults.systemMode = mode
+        containerSystem.mode = mode
+        showSystemMode = false
+    }
+
+    /// A system of its own starts once chosen. The CLI's starts too, and Settings opens if the CLI's
+    /// folder still has to be chosen; choosing it there starts the system.
+    private func startChosenSystemMode() {
+        switch UserDefaults.systemMode {
+        case .default where isFirstLaunch:
+            showSystemSetup = true
+        case .default:
+            // A folder that still needs the kernel brings up the setup sheet as it starts.
+            Task { try? await containerSystem.start(appRoot: UserDefaults.systemDataRoot) }
+        case .cliCompatibility:
+            Task { try? await containerSystem.start(appRoot: UserDefaults.systemDataRoot) }
+
+            // The sandbox lets the app into the CLI's folder only once it's chosen there.
+            if UserDefaults.cliDataRoot == nil {
+                openWindow(id: ContainersApp.settingsWindowID)
+            }
+        case nil:
+            break
+        }
+    }
+
     private func handlePlusButton() {
-        guard system.status == .running else { return }
+        guard containerSystem.isRunning, canAdd else { return }
 
         switch selectedTab {
         case .containers:

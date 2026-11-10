@@ -3,8 +3,8 @@
 //  Containers
 //
 
-import ContainerSystem
 import ContainerizationOCI
+import ContainersCore
 import Foundation
 
 /// What the Create Image sheet builds.

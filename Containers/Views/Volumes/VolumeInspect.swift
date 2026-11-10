@@ -5,7 +5,7 @@
 //  Created by Axel Martinez on 2026/06/07.
 //
 
-import ContainerSystem
+import ContainersCore
 import SwiftUI
 
 struct VolumeInspect: View {
@@ -54,7 +54,7 @@ private struct PrintableVolumeConfiguration: Encodable {
         self.driver = volume.driver
         self.format = volume.format
         self.source = volume.source
-        self.creationDate = volume.createdAt
+        self.creationDate = volume.creationDate
         self.labels = volume.labels
         self.options = volume.options
         self.sizeInBytes = volume.sizeInBytes

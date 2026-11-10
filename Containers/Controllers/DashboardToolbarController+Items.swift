@@ -38,7 +38,7 @@ extension DashboardToolbarController: NSToolbarDelegate {
         case Self.addIdentifier:
             buttonItem(
                 itemIdentifier, label: "New", toolTip: "New",
-                symbolName: "plus", isEnabled: isEnabled,
+                symbolName: "plus", isEnabled: isEnabled && isAddEnabled,
                 action: #selector(addInvoked))
         case Self.clearIdentifier:
             buttonItem(
@@ -55,7 +55,7 @@ extension DashboardToolbarController: NSToolbarDelegate {
 
     /// A one-entry group, since only `.selectAny` draws an on state.
     private func filterItem(_ identifier: NSToolbarItem.Identifier) -> NSToolbarItemGroup {
-        let title = "Running containers only"
+        let title = "Running Containers Only"
         let image =
             NSImage(
                 systemSymbolName: "line.3.horizontal.decrease",
@@ -72,7 +72,7 @@ extension DashboardToolbarController: NSToolbarDelegate {
         )
         group.setSelected(isFilterOn, at: 0)
         group.isEnabled = isEnabled
-        group.toolTip = title
+        group.toolTip = "Show only running containers"
         return group
     }
 

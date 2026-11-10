@@ -6,9 +6,9 @@
 //
 
 import AppKit
-import ContainerSystem
 import Containerization
 import ContainerizationOCI
+import ContainersCore
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -35,11 +35,10 @@ enum SaveImagePanel {
         accessory.frame = NSRect(x: 0, y: 0, width: 380, height: 44)
         panel.accessoryView = accessory
 
-        let response = panel.runModal()
-        guard response == .OK, let url = panel.url else { return }
-        let platform = selection.value.platform ?? .current
-
         Task { @MainActor in
+            guard let url = await panel.presentAsSheet() else { return }
+            let platform = selection.value.platform ?? .current
+
             do {
                 try await imageManager.save(
                     images: [image],

@@ -5,10 +5,10 @@
 //  Created by Axel Martinez on 2026/02/05.
 //
 
-import ContainerSystem
 import Containerization
 import ContainerizationExtras
 import ContainerizationOCI
+import ContainersCore
 import Foundation
 import SwiftUI
 import Virtualization
@@ -21,18 +21,18 @@ struct CreateContainerView: View {
         var title: String {
             switch self {
             case .create:
-                "Create New Container"
+                "Choose options for you new container"
             case .run:
-                "Run Container"
+                "Choose how you want to run this image"
             }
         }
 
         var progressTitle: String {
             switch self {
             case .create:
-                "Creating container..."
+                "Creating container…"
             case .run:
-                "Running container..."
+                "Running container…"
             }
         }
 
@@ -57,6 +57,7 @@ struct CreateContainerView: View {
     @Environment(ContainerManager.self) private var containerManager
     @Environment(ImageManager.self) private var imageManager
     @Environment(VolumeManager.self) private var volumeManager
+    @Environment(NetworkManager.self) private var networkManager
     @Environment(ActivityCenter.self) private var activityCenter
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
@@ -67,6 +68,8 @@ struct CreateContainerView: View {
 
     @SwiftUI.State private var process: ContainerProcess = .init()
     @SwiftUI.State private var options: ContainerManagementOptions = .init()
+    @SwiftUI.State private var networkNames: [String] = [NetworkConfiguration.defaultName]
+    @SwiftUI.State private var network = NetworkConfiguration.defaultName
     @SwiftUI.State private var configuration: ContainerConfiguration = .init()
     @SwiftUI.State private var volumes: [VolumeMount] = []
     @SwiftUI.State private var mounts: [Mount] = []
@@ -122,15 +125,16 @@ struct CreateContainerView: View {
                     confirmStop()
                 } label: {
                     Text("Cancel")
-                        .frame(width: .sheetButtonLabelWidth)
+                        .frame(minWidth: .sheetButtonLabelWidth)
                 }
                 .buttonStyle(.bordered)
+                .keyboardShortcut(.cancelAction)
 
                 Button {
                     createContainer()
                 } label: {
                     Text(mode.buttonTitle)
-                        .frame(width: .sheetButtonLabelWidth)
+                        .frame(minWidth: .sheetButtonLabelWidth)
                 }
                 .defaultAction(
                     enabled: !showProgressView
@@ -172,6 +176,10 @@ struct CreateContainerView: View {
         .task {
             await preloadLocalImages()
             await preloadVolumes()
+
+            if let networks = try? await networkManager.networks() {
+                networkNames = networks.map(\.name)
+            }
         }
         .onDisappear {
             self.showProgressView = false
@@ -211,10 +219,10 @@ struct CreateContainerView: View {
         } else {
             FormRow(title: "Image") {
                 FormPicker(
-                    placeholder: "Select Image...",
+                    placeholder: "Select image…",
                     options: localImages.map { $0.reference },
                     selection: $imageReference,
-                    actionTitle: "Other...",
+                    actionTitle: "Other…",
                     onAction: { showPickLocalImage = true }
                 )
             }
@@ -307,7 +315,7 @@ struct CreateContainerView: View {
                     )
                 }
 
-                FormRow(title: "Stop Signal") {
+                FormRow(title: "Stop signal") {
                     FormField(
                         placeholder: "SIGTERM",
                         value: Binding(
@@ -371,7 +379,18 @@ struct CreateContainerView: View {
                 }
 
                 FormRow(
-                    title: "Shared Memory",
+                    title: "Network",
+                    description: "The network the container attaches to. Manage networks in Settings."
+                ) {
+                    FormPicker(
+                        placeholder: "Network",
+                        options: networkNames,
+                        selection: $network
+                    )
+                }
+
+                FormRow(
+                    title: "Shared memory",
                     description: "Size of /dev/shm (e.g. 64M, 1G)"
                 ) {
                     FormField(
@@ -555,8 +574,6 @@ struct CreateContainerView: View {
     ) {
         let containerManager = containerManager
         let mode = mode
-        let imagesDir = UserDefaults.applicationDataRoot
-            .appendingPathComponent("images")
 
         activityCenter.start(
             id: options.name,
@@ -570,7 +587,6 @@ struct CreateContainerView: View {
             func create(progress: Progress) async throws -> String {
                 try await containerManager.create(
                     imageReference: imageReference,
-                    imagesDir: imagesDir,
                     arguments: [],
                     process: process,
                     configuration: configuration,
@@ -666,7 +682,13 @@ struct CreateContainerView: View {
                     from: self.platformString
                 )
                 self.configuration.shmSize = shmSizeInBytes
-                self.configuration.capabilities = self.capabilities.names
+                // The default network is the one a container gets without naming any.
+                self.options.networks = self.network == NetworkConfiguration.defaultName ? [] : [self.network]
+                // From the system's config.toml.
+                self.configuration.resources.cpus = DefaultsStore.getInt(key: .defaultContainerCPUs) ?? self.configuration.resources.cpus
+                self.configuration.resources.memoryInBytes =
+                    DefaultsStore.getUInt64(key: .defaultContainerMemory) ?? self.configuration.resources.memoryInBytes
+                self.configuration.capAdd = self.capabilities.names
 
                 self.configuration.publishedPorts = self.ports.compactMap(
                     \.publishedPort

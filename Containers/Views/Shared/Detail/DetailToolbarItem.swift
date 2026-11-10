@@ -5,7 +5,7 @@
 //  Created by Axel Martinez on 03/10/2026.
 //
 
-import ContainerSystem
+import ContainersCore
 import Foundation
 import TipKit
 
@@ -58,10 +58,10 @@ extension DetailToolbarItem {
     static func reports(
         about name: String,
         ofKind kinds: Set<Report.Kind>,
-        manager: ReportManager,
+        from reportManager: ReportManager,
         openURL: OpenURLAction
     ) -> DetailToolbarItem {
-        let reports = manager.reports(named: name, ofKind: kinds)
+        let reports = reportManager.reports(named: name, ofKind: kinds)
         let hasUnread = reports.contains { !$0.isRead }
 
         // Disabled rather than hidden when there's nothing to show: an item

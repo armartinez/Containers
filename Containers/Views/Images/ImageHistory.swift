@@ -5,9 +5,9 @@
 //  Created by Axel Martinez on 2026/02/12.
 //
 
-import ContainerSystem
 import Containerization
 import ContainerizationOCI
+import ContainersCore
 import SwiftUI
 
 struct ImageHistory: View {
@@ -44,10 +44,10 @@ struct ImageHistory: View {
                     Image(systemName: "square.stack.3d.up.slash")
                         .font(.system(size: 48))
                         .foregroundStyle(.tertiary)
-                    Text("No layers found")
+                    Text("No Layers Found")
                         .font(.headline)
                         .foregroundStyle(.primary)
-                    Text("Unable to retrieve layer information for this image")
+                    Text("Unable to retrieve layer information for this image.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -80,9 +80,7 @@ struct ImageHistory: View {
         // them rather than padding the window out.
         .contentUnbounded()
         .contentReady(!isLoading)
-        .task {
-            await loadLayers()
-        }
+        .task(loadLayers)
         .errorAlert($errorAlert)
     }
 

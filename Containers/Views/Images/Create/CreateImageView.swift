@@ -6,11 +6,11 @@
 //
 
 import AppKit
-import ContainerSystem
 import Containerization
 import ContainerizationError
 import ContainerizationOCI
 import ContainerizationOS
+import ContainersCore
 import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
@@ -55,6 +55,7 @@ struct CreateImageView: View {
     }
 
     @Environment(ImageManager.self) private var imageManager
+    @Environment(ContainerSystem.self) private var containerSystem
     @Environment(ActivityCenter.self) private var activityCenter
     @Environment(\.dismiss) private var dismiss
 
@@ -91,9 +92,10 @@ struct CreateImageView: View {
                     dismiss()
                 } label: {
                     Text("Cancel")
-                        .frame(width: .sheetButtonLabelWidth)
+                        .frame(minWidth: .sheetButtonLabelWidth)
                 }
                 .buttonStyle(.bordered)
+                .keyboardShortcut(.cancelAction)
 
                 Spacer()
 
@@ -101,7 +103,7 @@ struct CreateImageView: View {
                     action: previousStep,
                     label: {
                         Text("Previous")
-                            .frame(width: .sheetButtonLabelWidth)
+                            .frame(minWidth: .sheetButtonLabelWidth)
                     }
                 )
                 .buttonStyle(.bordered)
@@ -113,7 +115,7 @@ struct CreateImageView: View {
                         action: nextStep,
                         label: {
                             Text("Next")
-                                .frame(width: .sheetButtonLabelWidth)
+                                .frame(minWidth: .sheetButtonLabelWidth)
                         }
                     )
                     .defaultAction(enabled: canProceedToNextStep)
@@ -122,7 +124,7 @@ struct CreateImageView: View {
                         action: createImage,
                         label: {
                             Text("Create")
-                                .frame(width: .sheetButtonLabelWidth)
+                                .frame(minWidth: .sheetButtonLabelWidth)
                         }
                     )
                     .defaultAction(
@@ -159,6 +161,7 @@ struct CreateImageView: View {
         case .method:
             CreateImageMethod(
                 selectedMethod: $selectedMethod,
+                canBuild: !containerSystem.isReadOnly,
                 onSelection: selectCreationMethod
             )
         case .configuration:
@@ -208,7 +211,7 @@ struct CreateImageView: View {
         case .configuration:
             switch selectedMethod {
             case .pull: return pull.isComplete
-            case .build: return build.isComplete
+            case .build: return build.isComplete && !containerSystem.isReadOnly
             case .load: return load.isComplete
             case .none: return false
             }
@@ -231,12 +234,12 @@ struct CreateImageView: View {
         panel.directoryURL = load.tarFile?.parent ?? defaultFileDialogDirectory
         panel.allowedContentTypes = tarContentTypes
 
-        guard panel.runModal() == .OK, let url = panel.url else {
-            return
-        }
+        Task {
+            guard let url = await panel.presentAsSheet() else { return }
 
-        load.tarFile = url
-        createImage()
+            load.tarFile = url
+            createImage()
+        }
     }
 
     private func prepareStepTransition() {
@@ -353,8 +356,8 @@ struct CreateImageView: View {
                 dockerFile: dockerFile,
                 contextDirectory: contextDirectory,
                 tag: tag,
-                cpus: 2,
-                memory: 1024.mib(),
+                cpus: Int64(DefaultsStore.getInt(key: .defaultBuildCPUs) ?? 2),
+                memory: DefaultsStore.getUInt64(key: .defaultBuildMemory) ?? 1024.mib(),
                 vSockPort: 8088,
                 outputs: [
                     BuildImageOutputConfiguration(

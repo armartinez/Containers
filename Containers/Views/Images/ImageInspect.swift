@@ -5,7 +5,7 @@
 //  Created by Axel Martinez on 2026/06/06.
 //
 
-import ContainerSystem
+import ContainersCore
 import SwiftUI
 
 struct ImageInspect: View {
@@ -13,7 +13,7 @@ struct ImageInspect: View {
 
     @Environment(ImageManager.self) private var imageManager
 
-    @State private var printable: ContainerSystem.ImageResource?
+    @State private var printable: ContainersCore.ImageResource?
     @State private var errorMessage: String?
 
     var body: some View {
@@ -30,9 +30,7 @@ struct ImageInspect: View {
             }
         }
         .contentReady(isLoaded)
-        .task(id: image.id) {
-            await loadInspectDetail()
-        }
+        .task(id: image.id, loadInspectDetail)
     }
 
     /// An error is as much a result to be sized to as the detail itself.

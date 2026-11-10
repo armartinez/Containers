@@ -5,7 +5,7 @@
 //  Created by Axel Martinez on 10/2/26.
 //
 
-import ContainerSystem
+import ContainersCore
 import SwiftUI
 
 struct ContainerLogs: View {
@@ -45,6 +45,8 @@ struct ContainerLogs: View {
             }
         }
     }
+
+    @Environment(ContainerSystem.self) private var containerSystem
 
     @State private var source: Source = .output
     /// Lags `source` until the new log is read, so the empty message never names the wrong log.
@@ -92,9 +94,7 @@ struct ContainerLogs: View {
         // Unmeasured, so switching, filtering or emptying the log never resizes the window.
         .contentUnbounded()
         .contentIdealSize(CGSize(width: Self.idealWidth, height: 0))
-        .task(id: source) {
-            await streamLogs()
-        }
+        .task(id: source, streamLogs)
     }
 
     private var bar: some View {
@@ -192,13 +192,15 @@ struct ContainerLogs: View {
     }
 
     private func streamLogs() async {
-        let containerDir = UserDefaults.applicationDataRoot
+        let containerDir = UserDefaults.systemDataRoot
             .appendingPathComponent("containers")
             .appendingPathComponent(containerID)
 
         let logFile = containerDir.appendingPathComponent(source.filename)
 
-        if !FileManager.default.fileExists(atPath: logFile.path) {
+        // Made here so it can be followed from the start, but not in the CLI's folder, which is the
+        // CLI's to write in.
+        if !FileManager.default.fileExists(atPath: logFile.path), !containerSystem.isReadOnly {
             FileManager.default.createFile(atPath: logFile.path, contents: nil)
         }
 

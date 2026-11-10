@@ -1,4 +1,4 @@
-name: Build containers template
+name: Build Containers Template
 
 permissions:
   contents: read
@@ -11,14 +11,16 @@ on:
         description: "Build using the Release configuration"
         default: false
 
+env:
+  DEVELOPER_DIR: "/Applications/Xcode_26.6.app/Contents/Developer"
+
 jobs:
-  buildAndTest:
-    name: Build and Test
+  build:
+    name: Build
     if: github.repository == 'try-containers/Containers'
     timeout-minutes: 60
     runs-on: macos-26
     env:
-      DEVELOPER_DIR: "/Applications/Xcode_26.6.app/Contents/Developer"
       BUILD_CONFIGURATION: ${{ inputs.release && 'Release' || 'Debug' }}
 
     steps:
@@ -36,6 +38,10 @@ jobs:
           git diff
           if ! git diff --quiet ; then echo the following files require formatting: ; git diff --name-only ; false ; fi
 
+      - name: Lint
+        run: |
+          swift format lint --strict --recursive --configuration .swift-format $(find . -type f -name '*.swift' -not -path "*/.*")
+
       - name: Resolve packages
         run: |
           xcodebuild -resolvePackageDependencies \
@@ -52,12 +58,33 @@ jobs:
             -destination 'platform=macOS' \
             CODE_SIGNING_ALLOWED=NO
 
-      - name: Test 
+  test:
+    name: Test
+    if: github.repository == 'try-containers/Containers'
+    timeout-minutes: 60
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6
+        with:
+          fetch-depth: 0
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Resolve packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project Containers.xcodeproj \
+            -scheme ContainersCoreTests
+
+      - name: Test
         run: |
           set -o pipefail
           xcodebuild test \
             -project Containers.xcodeproj \
-            -scheme ContainerSystemTests \
+            -scheme ContainersCoreTests \
             -destination 'platform=macOS' \
             -resultBundlePath TestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO

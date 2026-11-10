@@ -5,14 +5,15 @@
 //  Created by Axel Martinez on 2026/02/05.
 //
 
-import ContainerSystem
+import AppKit
+import ContainersCore
 import SwiftUI
 
 /// The foot of the dashboard: the system's status, and what the containers
 /// use between them.
 struct DashboardStatusBar: View {
     @Environment(ContainerManager.self) private var containerManager
-    @Environment(SystemManager.self) private var system
+    @Environment(ContainerSystem.self) private var containerSystem
 
     @Binding var errorAlert: ErrorAlert?
 
@@ -35,13 +36,26 @@ struct DashboardStatusBar: View {
                 .frame(height: 16)
 
             HStack(spacing: 12) {
-                reading("memorychip", String(format: "%.2f GB", usage.memoryUsage))
-                reading("cpu", String(format: "%.0f%%", usage.cpuUsage))
+                if !containerSystem.isReadOnly {
+                    reading("memorychip", String(format: "%.2f GB", usage.memoryUsage))
+                    reading("cpu", String(format: "%.0f%%", usage.cpuUsage))
+                }
+
                 reading("internaldrive", String(format: "%.2f GB", usage.diskUsage))
             }
             .foregroundStyle(.secondary)
 
             Spacer()
+
+            if showsTerminal {
+                Button(action: openTerminal) {
+                    Image(systemName: "apple.terminal.on.rectangle")
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+                .help("Open Terminal")
+                .padding(.trailing, 2)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
@@ -59,6 +73,28 @@ struct DashboardStatusBar: View {
         }
     }
 
+    /// While the app manages the CLI's folder itself, the CLI is better left alone.
+    private var showsTerminal: Bool {
+        guard containerSystem.mode == .cliCompatibility else { return false }
+
+        switch containerSystem.status {
+        case .notStarted, .failed, .readOnly: return true
+        case .starting, .running, .stopping: return false
+        }
+    }
+
+    private func openTerminal() {
+        guard let terminal = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Terminal") else { return }
+
+        NSWorkspace.shared.openApplication(at: terminal, configuration: NSWorkspace.OpenConfiguration()) { _, error in
+            guard let error else { return }
+
+            Task { @MainActor in
+                errorAlert = ErrorAlert("Terminal couldn’t be opened.", error: error)
+            }
+        }
+    }
+
     private func reading(_ symbol: String, _ value: String) -> some View {
         HStack(spacing: 4) {
             Image(systemName: symbol)
@@ -68,7 +104,7 @@ struct DashboardStatusBar: View {
     }
 
     private func updateUsage() async {
-        guard system.status == .running else {
+        guard containerSystem.isRunning else {
             usage = .zero
             cpuSamples = [:]
             lastDiskReading = .distantPast
@@ -111,7 +147,7 @@ struct DashboardStatusBar: View {
         var diskUsage = usage.diskUsage
 
         if now.timeIntervalSince(lastDiskReading) >= 30,
-            let bytes = await system.diskUsage()
+            let bytes = await containerSystem.diskUsage()
         {
             diskUsage = Double(bytes) / 1_000_000_000
             lastDiskReading = now

@@ -5,7 +5,7 @@
 //  Created by Axel Martinez on 03/08/2026.
 //
 
-import ContainerSystem
+import ContainersCore
 import SwiftUI
 
 struct VolumeEditor: View {
@@ -20,7 +20,7 @@ struct VolumeEditor: View {
             if mount.source == .volume {
                 field("Volume") {
                     FormPicker(
-                        placeholder: "Select a volume...",
+                        placeholder: "Select a volume…",
                         options: availableVolumes.map(\.name),
                         selection: $mount.volumeName
                     )

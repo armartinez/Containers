@@ -5,8 +5,8 @@
 //  Created by Axel Martinez on 28/06/2026.
 //
 
-import ContainerSystem
 import ContainerizationOCI
+import ContainersCore
 import Foundation
 import SwiftUI
 import UniformTypeIdentifiers

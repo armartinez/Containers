@@ -23,12 +23,11 @@ struct FormSheet<Content: View>: View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.title2)
-                    .fontWeight(.semibold)
+                    .font(.headline)
 
                 if let description {
                     Text(description)
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -51,7 +50,7 @@ struct FormSheet<Content: View>: View {
                 .disabled(isPrimaryButtonDisabled)
             }
         }
-        .padding(24)
+        .padding(20)
         .frame(width: 420, alignment: .topLeading)
         .fixedSize(horizontal: false, vertical: true)
     }

@@ -5,9 +5,9 @@
 //  Created by Axel Martinez on 2026/02/14.
 //
 
-import ContainerSystem
 import Containerization
 import ContainerizationOCI
+import ContainersCore
 import SwiftUI
 
 struct ImageDetailWindow: View {
@@ -53,9 +53,7 @@ struct ImageDetailWindow: View {
         .navigationTitle(
             image.map { Text($0.displayName) } ?? Text("")
         )
-        .task(id: imageReference) {
-            await load()
-        }
+        .task(id: imageReference, load)
     }
 
     private func load() async {
@@ -79,6 +77,7 @@ struct ImageDetailWindow: View {
 
 struct ImageDetailView: View {
     @Environment(ImageManager.self) private var imageManager
+    @Environment(ContainerSystem.self) private var containerSystem
     @Environment(ReportManager.self) private var reportManager
     @Environment(\.dismissWindow) private var dismissWindow
     @Environment(\.openURL) private var openURL
@@ -176,7 +175,7 @@ struct ImageDetailView: View {
             )
         }
         .confirmationDialog(
-            "Delete Image?",
+            "Are you sure you want to delete “\(image.displayName)”?",
             isPresented: $showDeleteConfirmation,
             titleVisibility: .visible
         ) {
@@ -186,9 +185,7 @@ struct ImageDetailView: View {
 
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text(
-                "Delete \(image.displayName)? This cannot be undone."
-            )
+            Text("You can’t undo this action.")
         }
         .errorAlert($errorAlert)
     }
@@ -200,14 +197,16 @@ struct ImageDetailView: View {
             .reports(
                 about: image.imageDescription.reference,
                 ofKind: [.image, .build],
-                manager: reportManager,
+                from: reportManager,
                 openURL: openURL
             ),
             DetailToolbarItem(
                 id: "run",
                 title: "Run",
                 icon: "play.fill",
-                help: "Run container"
+                help: "Run container",
+                // Beside the CLI, containers are its API server's to run.
+                isEnabled: !containerSystem.isReadOnly
             ) {
                 showCreateContainer = true
             },
@@ -232,7 +231,8 @@ struct ImageDetailView: View {
                 id: "delete",
                 title: "Delete",
                 icon: "trash",
-                help: "Delete image"
+                help: "Delete image",
+                isEnabled: !containerSystem.isReadOnly
             ) {
                 showDeleteConfirmation = true
             },

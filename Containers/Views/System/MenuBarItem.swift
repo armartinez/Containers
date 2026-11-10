@@ -6,16 +6,16 @@
 //
 
 import AppKit
-import ContainerSystem
+import ContainersCore
 import SwiftUI
 
 struct MenuBarItem: View {
-    @Environment(SystemManager.self) var system
+    @Environment(ContainerSystem.self) var containerSystem
     @Environment(SystemActions.self) private var systemActions
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        StatusButton(status: system.status)
+        StatusButton(status: containerSystem.status)
 
         Divider()
 
@@ -59,8 +59,19 @@ struct MenuBarItem: View {
             isDisabled: !systemActions.isEnabled(action)
         ) {
             Task {
-                do {
+                do throws(SystemActions.Failure) {
                     try await systemActions.perform(action)
+
+                    // The kernel is asked about in the dashboard's setup sheet.
+                    if systemActions.isAskingForKernel {
+                        openWindow(id: ContainersApp.dashboardWindowID)
+                    }
+                } catch  where error.underlying is SystemActions.CLIRunningError {
+                    let alert = NSAlert()
+                    alert.alertStyle = .warning
+                    alert.messageText = error.title
+                    alert.informativeText = error.underlying.localizedDescription
+                    alert.runModal()
                 } catch {
                     // Shown in the dashboard, where the system can be looked at.
                     openWindow(id: ContainersApp.dashboardWindowID)
@@ -73,7 +84,7 @@ struct MenuBarItem: View {
 // MARK: - Status Button Component
 
 private struct StatusButton: View {
-    let status: SystemManager.Status
+    let status: ContainerSystem.Status
 
     /// A `Label`, since AppKit lays out a menu item's image and title itself. Only the
     /// symbol is coloured; AppKit fades a disabled item's text far more than its image.

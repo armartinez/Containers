@@ -6,8 +6,8 @@ Guidance for coding agents working in this repository.
 
 The project is a single Xcode project with two schemes:
 
-- `Containers (macOS)` builds the app and the `ContainerSystem` framework it embeds.
-- `ContainerSystemTests` runs the framework's tests. The app target has no tests.
+- `Containers (macOS)` builds the app and the `ContainersCore` framework it embeds.
+- `ContainersCoreTests` runs the framework's tests. The app target has no tests.
 
 Signing reads `DEVELOPMENT_TEAM` from `Configuration/Local.xcconfig`, which is ignored by git. Copy `Configuration/Local.xcconfig.example` and fill in a team ID.
 
@@ -16,11 +16,11 @@ xcodebuild -project Containers.xcodeproj -scheme 'Containers (macOS)' build
 ```
 
 ```bash
-xcodebuild -project Containers.xcodeproj -scheme ContainerSystemTests test
+xcodebuild -project Containers.xcodeproj -scheme ContainersCoreTests test
 ```
 
 ```bash
-xcrun swift-format lint -r --configuration .swift-format Containers ContainerSystem ContainerSystemTests
+xcrun swift-format lint -r --configuration .swift-format Containers ContainersCore ContainersCoreTests
 ```
 
 - The app target runs the same lint as a build phase, so warnings show up in every build. Keep it clean.
@@ -29,34 +29,36 @@ xcrun swift-format lint -r --configuration .swift-format Containers ContainerSys
 
 ## Architecture
 
-The app runs Linux containers with Apple's [Containerization](https://github.com/apple/containerization) package, in process: the engine runs as actors inside the sandboxed app, with no separate server, XPC service or helper processes.
+The app runs Linux containers with Apple's [Containerization](https://github.com/apple/containerization) package, in process: the container system runs inside the sandboxed app, with no separate server, XPC service or helper processes.
 
 Calls flow in one direction:
 
 ```
 SwiftUI / AppKit views
-  → Managers         (ContainerSystem, @MainActor, public)
-    → ContainerRuntime.get…Service()
-      → Services     (ContainerSystem, actors, internal)
+  → ContainerSystem and managers  (ContainersCore, @MainActor, public)
+    → ContainerSystem.…Service (internal)
+      → Services     (ContainersCore, internal)
         → Containerization
 ```
 
-- `ContainerRuntime` (`ContainerRuntime.shared`) owns the services and the runtime's shared state: system status, setup progress and reports. It also installs the prerequisites (kernel, init image) on first start.
-- Managers are thin handles over the runtime, one per domain. `ImageManager()` uses the shared runtime; tests pass a `MockContainerRuntime` through `init(testRuntime:)`. A manager can use any service, but never another manager.
-- Services are the engine: internal actors that hold the state of containers, images, kernels and reports. Only the runtime creates them, when the system starts, and lets go of them when it stops. Everything else reaches them through the runtime's `get…Service()` accessors: managers and `Build/`. Nothing works while the system is stopped, by design.
+- `ContainerSystem` (`ContainerSystem.shared`) is the container system itself: its mode, status and lifecycle, the CLI beside it (`+CLI`), and the services it runs, created on start and released on stop. It holds the state the managers share, such as setup progress and reports, and installs the prerequisites (kernel, init image) on first start.
+- The framework's public objects are `ContainerSystem` and one manager per domain, along with the value types they take and return, the way Apple's container client puts system handles (`ClientHealthCheck`) beside its per-domain clients (`ContainerClient`, `ClientImage`). The system is not a manager: it's the one running thing the managers work in. The services and everything else below them are internal.
+- Managers are thin handles over the container system, one per domain. `ImageManager()` uses `ContainerSystem.shared`; tests pass a `MockContainerSystem` through `init(testSystem:)`. A manager can use any service, but never another manager.
+- Services are what the container system runs: internal types that hold the state of containers, images, kernels and reports. A service is an actor only when it has mutable state to protect (`DefaultContainerService`, `ReadOnlyContainerService`, `ReportService`, `DNSService`); one that only holds `let`s is a `Sendable` struct. Only the container system creates them, when the system starts, and lets go of them when it stops. Everything else reaches them through the container system's internal, throwing `…Service` properties: managers and `Build/`. Nothing works while the system is stopped, by design.
+- A service the system runs differently beside the container CLI's API server is a protocol (`ContainerService`, `ImageService`, `NetworkService`, `VolumeService`) with a `Default…` variant for the app's own mode and a `ReadOnly…` one that only reads the CLI's folder and throws `ContainerCLIError.apiServerRunning` for anything else. The container system picks the variants when the system starts, so managers never check the mode.
 - Progress is Foundation's `Progress`. A method that reports progress takes `progress: Progress? = nil`, sets `totalUnitCount` to its own steps and runs each with `progress.performStep("…") { step in … }` (`Progress/Progress+Steps.swift`). Callers compose operations by weighting steps with `pendingUnitCount`.
-- Failed work is recorded by `ReportManager` through `ReportsService` into `ReportStore`: a plist manifest plus one gzipped body per report. Managers that delete items also delete their reports through `ReportsService`.
+- Failed work is recorded by `ReportManager` through `ReportService` into `ReportStore`: a plist manifest plus one gzipped body per report. Managers that delete items also delete their reports through `ReportService`.
 - Errors are thrown as they are. Views turn them into an `ErrorAlert`; the framework and app models never build alerts.
 
-## ContainerSystem layout
+## ContainersCore layout
 
-Role first, with domains inside each role:
+Layer first, with domains inside each layer, like Apple's container project (`ContainerResource/`, `ContainerAPIService/Client/`, `ContainerAPIService/Server/`):
 
-- `Managers/`: `ContainerManager`, `ImageManager`, `VolumeManager`, `NetworkManager`, `SystemManager`, `ReportManager`.
-- `Runtime/`: `ContainerRuntime` and its extensions, with `Services/` inside it (`ContainersService`, `ImagesService`, `KernelService`, `ReportsService`), since the runtime owns the services.
+- `System/`: the public `ContainerSystem` and its extensions (`+CLI`, `+Configuration`, `+Prerequisites`, `+Services`), with the internal `Services/` inside it (`ContainerService`, `ImageService`, `KernelService`, `ReportService`), since the system owns the services. "Runtime" is kept for what it means in Apple's container CLI: the helper that runs one container (`runtimeHandler`, `runtime-configuration.json`).
+- `Managers/`: `ContainerManager`, `ImageManager`, `VolumeManager`, `NetworkManager`, `ReportManager`.
 - `Container/`, `Image/`, `Network/`, `Volume/`: value types for each domain (`ContainerConfiguration`, `ContainerSnapshot`, `ImageSummary`, `VolumeSummary`, …).
 - `Build/`: the BuildKit client. `Builder/` holds the gRPC client and the builder container's controller; `BuildPipeline/` handles the stream, split by concern (`+ImageResolver`, `+ContentStore`, `+FSSync`, `+Export`, `+Stdio`).
-- `Persistence/`, `Plugin/`, `Log/`, `Progress/`, `Reports/`, `Common/`: one folder per infrastructure concern.
+- `Persistence/`, `Log/`, `Progress/`, `Reports/`, `Common/`: one folder per infrastructure concern.
 
 ## Containers (app) layout
 
@@ -82,11 +84,11 @@ Rules for where logic goes:
 
 - Suffixes mean one thing each:
   - `Store`: persistence (`ReportStore`, `DefaultsStore`).
-  - `Manager`: a framework facade.
-  - `Service`: a framework engine actor.
+  - `Manager`: a framework facade over a collection of items (containers, images, …). A type that is one running thing is named after it instead (`ContainerSystem`).
+  - `Service`: an internal type the container system runs.
   - `Controller`: an AppKit controller.
   - `Center`: an app-wide hub (`ActivityCenter`).
-- Entries in a table are `…Item` (`ContainerItem`); framework list results are `…Summary`; value copies of live state are `…Snapshot`; a description of one operation to perform is `…Request`; a lifecycle enum is a nested `Status` (`SystemManager.Status`).
+- Entries in a table are `…Item` (`ContainerItem`); framework list results are `…Summary`; value copies of live state are `…Snapshot`; a description of one operation to perform is `…Request`; a lifecycle enum is a nested `Status` (`ContainerSystem.Status`).
 - Where a type mirrors one in Containerization, keep Apple's name and shape.
 - Extension files are `Type+Topic.swift`, never `Type+Extensions.swift`. One primary type per file.
 
@@ -102,10 +104,10 @@ Rules for where logic goes:
 
 ## Tests
 
-- Swift Testing only. Tests cover `ContainerSystem` and don't start virtual machines.
+- Swift Testing only. Tests cover `ContainersCore` and don't start virtual machines.
 - One suite per file: `FooTests.swift` holds `@Suite("Foo") struct FooTests`, with traits after the name (`@Suite("Volume manager", .serialized)`).
 - Tests read `@Test("Short sentence-case phrase") func camelCaseName()`, with no `test` prefix.
-- Each test works in its own `TemporaryDirectory` (`ContainerSystemTests/Support`) and removes it with `defer`. Tests that need managers use `MockContainerRuntime` (`ContainerSystemTests/Mocks`); service tests build the service directly over a temporary folder.
+- Each test works in its own `TemporaryDirectory` (`ContainersCoreTests/Support`) and removes it with `defer`. Tests that need managers use `MockContainerSystem` (`ContainersCoreTests/Mocks`); service tests build the service directly over a temporary folder.
 
 ## Releases
 

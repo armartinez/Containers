@@ -194,7 +194,7 @@ struct PullImageView: View {
     }
 
     private var registryImageNameField: some View {
-        FormRow(title: "Image Name") {
+        FormRow(title: "Image name") {
             TextField(
                 text: $imageName,
                 prompt: Text("Ex: nginx, ubuntu, redis")

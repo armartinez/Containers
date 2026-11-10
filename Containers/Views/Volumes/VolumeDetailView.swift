@@ -5,7 +5,7 @@
 //  Created by Axel Martinez on 2026/06/07.
 //
 
-import ContainerSystem
+import ContainersCore
 import SwiftUI
 
 struct VolumeDetailView: View {
@@ -48,7 +48,7 @@ struct VolumeDetailView: View {
             .reports(
                 about: volume.id,
                 ofKind: [.volume],
-                manager: reportManager,
+                from: reportManager,
                 openURL: openURL
             )
         ]

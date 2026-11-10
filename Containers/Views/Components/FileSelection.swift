@@ -179,7 +179,7 @@ struct FileSelection: View {
     }
 
     private var actionTitle: String {
-        options.isEmpty ? "Choose..." : "Other..."
+        options.isEmpty ? "Choose…" : "Other…"
     }
 
     private var selection: Binding<Location> {
@@ -284,6 +284,18 @@ struct FileSelection: View {
     }
 
     private func selectFile() {
+        let panel = makePanel()
+
+        Task {
+            guard let url = await panel.presentAsSheet() else { return }
+
+            fileURL.wrappedValue = url
+            onSelection?()
+            remember(url)
+        }
+    }
+
+    private func makePanel() -> NSSavePanel {
         if let suggestedSaveFilename {
             let panel = NSSavePanel()
             panel.canCreateDirectories = true
@@ -298,14 +310,7 @@ struct FileSelection: View {
                 panel.allowedContentTypes = allowedContentTypes
             }
 
-            guard panel.runModal() == .OK, let url = panel.url else {
-                return
-            }
-
-            fileURL.wrappedValue = url
-            onSelection?()
-            remember(url)
-            return
+            return panel
         }
 
         let panel = NSOpenPanel()
@@ -320,13 +325,7 @@ struct FileSelection: View {
             panel.allowedContentTypes = allowedContentTypes
         }
 
-        guard panel.runModal() == .OK, let url = panel.url else {
-            return
-        }
-
-        fileURL.wrappedValue = url
-        onSelection?()
-        remember(url)
+        return panel
     }
 }
 

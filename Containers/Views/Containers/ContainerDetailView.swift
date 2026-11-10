@@ -5,9 +5,9 @@
 //  Created by Axel Martinez on 2026/02/08.
 //
 
-import ContainerSystem
 import Containerization
 import ContainerizationOCI
+import ContainersCore
 import SwiftUI
 
 struct ContainerDetailWindow: View {
@@ -55,9 +55,7 @@ struct ContainerDetailWindow: View {
             )
         )
         .navigationTitle(id)
-        .task(id: id) {
-            await load()
-        }
+        .task(id: id, load)
     }
 
     private func load() async {
@@ -77,6 +75,7 @@ struct ContainerDetailWindow: View {
 
 struct ContainerDetailView: View {
     @Environment(ContainerManager.self) private var containerManager
+    @Environment(ContainerSystem.self) private var containerSystem
     @Environment(ActivityCenter.self) private var activityCenter
     @Environment(ReportManager.self) private var reportManager
     @Environment(\.dismissWindow) private var dismissWindow
@@ -158,7 +157,7 @@ struct ContainerDetailView: View {
         }
         .errorAlert($errorAlert)
         .confirmationDialog(
-            "Delete Container",
+            "Are you sure you want to delete “\(container.id)”?",
             isPresented: $showDeleteConfirmation,
             titleVisibility: .visible
         ) {
@@ -186,9 +185,7 @@ struct ContainerDetailView: View {
 
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text(
-                "Are you sure you want to delete container '\(container.id)'? This action cannot be undone."
-            )
+            Text("You can’t undo this action.")
         }
         .onChange(of: containerManager.lastContainerChange) {
             Task {
@@ -233,7 +230,7 @@ struct ContainerDetailView: View {
             .reports(
                 about: container.id,
                 ofKind: [.container],
-                manager: reportManager,
+                from: reportManager,
                 openURL: openURL
             ),
             DetailToolbarItem(
@@ -254,7 +251,8 @@ struct ContainerDetailView: View {
                 title: "Delete",
                 icon: "trash",
                 help: "Delete container",
-                isEnabled: !busy
+                // Beside the CLI, its API server owns every container.
+                isEnabled: !busy && !containerSystem.isReadOnly
             ) {
                 showDeleteConfirmation = true
             },
@@ -353,7 +351,7 @@ struct ContainerDetailView: View {
 }
 
 #Preview {
-    let reportManager = ReportManager()
+    let reportManager = ReportManager.preview
 
     ContainerDetailView(
         container: ContainerItem(
@@ -384,7 +382,7 @@ struct ContainerDetailView: View {
         )
     )
     .frame(width: 550)
-    .environment(ContainerManager())
+    .environment(ContainerManager.preview)
     .environment(ActivityCenter(reports: reportManager))
     .environment(reportManager)
 }

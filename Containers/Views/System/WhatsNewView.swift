@@ -43,10 +43,9 @@ struct WhatsNewView: View {
                 onContinue()
             } label: {
                 Text("Continue")
-                    .foregroundStyle(Color(nsColor: .windowBackgroundColor))
+                    .frame(minWidth: .sheetButtonLabelWidth)
             }
             .buttonStyle(.borderedProminent)
-            .tint(.primary)
             .controlSize(.large)
             .keyboardShortcut(.defaultAction)
             .frame(maxWidth: .infinity)

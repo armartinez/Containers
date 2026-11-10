@@ -77,11 +77,8 @@ struct CreateView<
 
     var body: some View {
         VStack(spacing: 0) {
-            // Working, the sheet is only its progress and the buttons that
-            // answer it: the title and the steps it names are gone.
             if showsHeader && !isProcessing {
                 Text(title)
-                    .font(.headline)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 14)
                     .frame(maxWidth: .infinity, alignment: .leading)

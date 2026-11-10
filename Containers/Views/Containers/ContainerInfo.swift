@@ -5,9 +5,9 @@
 //  Created by Axel Martinez on 10/2/26.
 //
 
-import ContainerSystem
 import Containerization
 import ContainerizationOCI
+import ContainersCore
 import SwiftUI
 
 struct ContainerInfo: View {

@@ -21,7 +21,7 @@ struct LoadTarImageView: View {
     var body: some View {
         FormStack {
             FormRow(
-                title: "Tar Archive",
+                title: "Tar archive",
                 description: "Select a tar archive containing the image"
             ) {
                 FileSelection(

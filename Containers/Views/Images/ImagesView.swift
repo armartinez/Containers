@@ -5,14 +5,15 @@
 //  Created by Axel Martinez on 2026/02/05.
 //
 
-import ContainerSystem
 import Containerization
 import ContainerizationOCI
+import ContainersCore
 import SwiftUI
 import TipKit
 
 struct ImagesView: View {
     @Environment(ImageManager.self) private var imageManager
+    @Environment(ContainerSystem.self) private var containerSystem
     @Environment(ActivityCenter.self) private var activityCenter
     @Environment(\.openWindow) private var openWindow
 
@@ -59,9 +60,10 @@ struct ImagesView: View {
         return filtered
     }
 
-    /// Running asks for a container's settings, so it is one image at a time.
+    /// Running asks for a container's settings, so it is one image at a time. Beside the CLI,
+    /// containers are its API server's to run.
     private func runnable(_ images: [ImageItem]) -> ImageItem? {
-        guard images.count == 1, let image = images.first, !image.isDisabled
+        guard !containerSystem.isReadOnly, images.count == 1, let image = images.first, !image.isDisabled
         else { return nil }
 
         return image
@@ -73,7 +75,7 @@ struct ImagesView: View {
             name: \.displayName,
             open: openDetails(for:),
             // Not an image a container was made from.
-            canDelete: { !$0.isExecuting && ($0.isPending || !$0.isInUse) },
+            canDelete: { !containerSystem.isReadOnly && !$0.isExecuting && ($0.isPending || !$0.isInUse) },
             delete: deleteImages,
             canStart: { runnable($0) != nil },
             start: { run(runnable($0)) }
@@ -100,7 +102,7 @@ struct ImagesView: View {
             }
         ) {
             TableColumn("Name", value: \.name) { image in
-                ActivityRowName(
+                TaskRowName(
                     row: image,
                     activityCenter: activityCenter,
                     openReport: openWindow.report
@@ -133,6 +135,13 @@ struct ImagesView: View {
                 }
             }
             .width(min: 150, ideal: 200, max: 250)
+        }
+        // Beside the CLI, images it pulls, builds or deletes.
+        .onChange(of: imageManager.lastSharedImageChange) {
+            Task {
+                guard containerSystem.isRunning else { return }
+                try? await listImages()
+            }
         }
         .sheet(
             item: $imageToRun,
@@ -186,7 +195,7 @@ struct ImagesView: View {
 }
 
 #Preview {
-    let reportManager = ReportManager()
+    let reportManager = ReportManager.preview
 
     ImagesView(
         searchText: .constant(""),
@@ -195,7 +204,10 @@ struct ImagesView: View {
         command: .constant(nil),
         refreshTrigger: 0
     )
-    .environment(ContainerManager())
+    .environment(ContainerManager.preview)
+    .environment(NetworkManager.preview)
+    .environment(ContainerSystem.preview)
+    .environment(SystemActions(containerSystem: .preview))
     .environment(ActivityCenter(reports: reportManager))
     .environment(reportManager)
 }

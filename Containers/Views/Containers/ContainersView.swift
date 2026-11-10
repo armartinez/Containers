@@ -5,12 +5,12 @@
 //  Created by Axel Martinez on 2026/02/05.
 //
 
-import ContainerSystem
+import ContainersCore
 import SwiftUI
 
 struct ContainersView: View {
     @Environment(ContainerManager.self) private var containerManager
-    @Environment(SystemManager.self) private var system
+    @Environment(ContainerSystem.self) private var containerSystem
     @Environment(VolumeManager.self) private var volumeManager
     @Environment(ActivityCenter.self) private var activityCenter
     @Environment(\.openWindow) private var openWindow
@@ -86,7 +86,8 @@ struct ContainersView: View {
             noun: "Container",
             name: \.id,
             open: openDetails(for:),
-            canDelete: { !$0.isExecuting },
+            // Beside the CLI, its API server owns every container.
+            canDelete: { !containerSystem.isReadOnly && !$0.isExecuting },
             delete: deleteContainers,
             canStart: { !startable($0).isEmpty },
             start: { startContainers(startable($0)) },
@@ -132,7 +133,7 @@ struct ContainersView: View {
             .width(min: 36, ideal: 44, max: 60)
 
             TableColumn("Name", value: \.name) { container in
-                ActivityRowName(
+                TaskRowName(
                     row: container,
                     activityCenter: activityCenter,
                     openReport: openWindow.report
@@ -174,7 +175,7 @@ struct ContainersView: View {
         }
         .onChange(of: containerManager.lastContainerChange) {
             Task {
-                guard system.status == .running else { return }
+                guard containerSystem.isRunning else { return }
                 try? await refreshContainers()
             }
         }
@@ -191,9 +192,8 @@ struct ContainersView: View {
     /// ring would pass it off as stopped.
     private func stateSymbol(for container: ContainerItem) -> String {
         switch container.status {
-        case .starting, .running, .stopping: "circle.fill"
+        case .starting, .running, .stopping, .unknown: "circle.fill"
         case .stopped: "circle"
-        case .unknown: "questionmark.circle"
         }
     }
 
@@ -207,7 +207,8 @@ struct ContainersView: View {
         case .running: return .green
         case .starting, .stopping: return .orange
         case .stopped: return .secondary
-        case .unknown: return .secondary
+        // Black, or white in dark mode, where black wouldn't show.
+        case .unknown: return .primary
         }
     }
 
@@ -292,7 +293,7 @@ struct ContainersView: View {
 }
 
 #Preview {
-    let reportManager = ReportManager()
+    let reportManager = ReportManager.preview
 
     ContainersView(
         searchText: .constant(""),
@@ -302,8 +303,9 @@ struct ContainersView: View {
         command: .constant(nil),
         refreshTrigger: 0
     )
-    .environment(ContainerManager())
-    .environment(SystemManager())
+    .environment(ContainerManager.preview)
+    .environment(ContainerSystem.preview)
+    .environment(SystemActions(containerSystem: .preview))
     .environment(ActivityCenter(reports: reportManager))
     .environment(reportManager)
 }

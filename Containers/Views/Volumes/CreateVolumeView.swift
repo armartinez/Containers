@@ -5,8 +5,8 @@
 //  Created by Axel Martinez on 2025/11/03.
 //
 
-import ContainerSystem
 import ContainerizationOCI
+import ContainersCore
 import SwiftUI
 
 struct CreateVolumeView: View {
@@ -35,10 +35,10 @@ struct CreateVolumeView: View {
 
     var body: some View {
         CreateView(
-            title: "Create New Volume",
+            title: "Choose options for your new volume",
             error: $errorAlert,
             isProcessing: showProgressView,
-            progressTitle: "Creating volume...",
+            progressTitle: "Creating volume…",
             width: 550,
             height: 450,
             scrollsContent: true,
@@ -55,15 +55,16 @@ struct CreateVolumeView: View {
                     dismiss()
                 } label: {
                     Text("Cancel")
-                        .frame(width: .sheetButtonLabelWidth)
+                        .frame(minWidth: .sheetButtonLabelWidth)
                 }
                 .buttonStyle(.bordered)
+                .keyboardShortcut(.cancelAction)
 
                 Button {
                     createVolume()
                 } label: {
                     Text("Create")
-                        .frame(width: .sheetButtonLabelWidth)
+                        .frame(minWidth: .sheetButtonLabelWidth)
                 }
                 .defaultAction(
                     enabled: !showProgressView

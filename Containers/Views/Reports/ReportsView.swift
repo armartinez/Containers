@@ -5,7 +5,7 @@
 //  Created by Axel Martinez on 16/09/2026.
 //
 
-import ContainerSystem
+import ContainersCore
 import SwiftUI
 
 /// Reports of failed work, added automatically as work fails.

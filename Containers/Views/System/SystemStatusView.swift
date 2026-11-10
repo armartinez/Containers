@@ -5,17 +5,17 @@
 //  Created by Axel Martinez on 2026/02/08.
 //
 
-import ContainerSystem
+import ContainersCore
 import SwiftUI
 
 struct SystemStatusView: View {
-    @Environment(SystemManager.self) private var system
+    @Environment(ContainerSystem.self) private var containerSystem
+    @Environment(SystemActions.self) private var systemActions
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        switch system.status {
+        switch containerSystem.status {
         case .starting:
-            // What a first run has to install is reported on its own sheet,
-            // so what is left to say here is that the system is starting.
             progress("Starting the container system…")
         case .stopping:
             progress("Stopping the container system…")
@@ -23,7 +23,7 @@ struct SystemStatusView: View {
             failedView
         case .notStarted:
             stoppedView
-        case .running:
+        case .running, .readOnly:
             EmptyView()
         }
     }
@@ -45,27 +45,36 @@ struct SystemStatusView: View {
 
     private var failedView: some View {
         ContentUnavailableView {
-            Label(
-                "The Container System Couldn’t Start",
-                systemImage: "exclamationmark.triangle.fill"
-            )
+            Label("Container System Failed to Start", systemImage: "exclamationmark.triangle.fill")
+                .lineLimit(1)
+                .fixedSize()
         } description: {
-            if let error = system.startupError {
-                Text(error.localizedDescription)
+            if let error = containerSystem.startupError {
+                Text((error as? ContainerCLIError)?.message ?? error.localizedDescription)
             }
         } actions: {
-            Button("Try Again", action: start)
+            if isFixedInSettings {
+                Button("Open Settings") {
+                    openWindow(id: ContainersApp.settingsWindowID)
+                }
+            } else {
+                Button("Try Again", action: start)
+            }
         }
+    }
+
+    private var isFixedInSettings: Bool {
+        (containerSystem.startupError as? ContainerCLIError)?.isFixedInSettings ?? false
     }
 
     private var stoppedView: some View {
         ContentUnavailableView {
             Label(
                 "Container System Stopped",
-                systemImage: SystemManager.Status.notStarted.symbol
+                systemImage: ContainerSystem.Status.notStarted.symbol
             )
         } description: {
-            Text("Start it to work with your containers, images and volumes.")
+            Text("Your containers, images, and volumes appear here while the container system is running.")
         } actions: {
             Button("Start", systemImage: "play.fill", action: start)
                 .labelStyle(.titleAndIcon)
@@ -75,8 +84,8 @@ struct SystemStatusView: View {
     private func start() {
         Task {
             // A failure puts the view into its own failed state, by way of
-            // `system.startupError`.
-            try? await system.start(appRoot: UserDefaults.applicationDataRoot)
+            // `containerSystem.startupError`.
+            try? await systemActions.startAskingForKernel()
         }
     }
 }

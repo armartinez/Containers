@@ -5,7 +5,7 @@
 //  Created by Axel Martinez on 03/08/2026.
 //
 
-import ContainerSystem
+import ContainersCore
 import SwiftUI
 
 /// The editors the create sheet's lists open for one drafted item at a time.

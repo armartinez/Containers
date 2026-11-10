@@ -5,7 +5,7 @@
 //  Created by Axel Martinez on 2026/02/05.
 //
 
-import ContainerSystem
+import ContainersCore
 import Foundation
 
 enum VolumeType: String, CaseIterable, Identifiable {
@@ -19,10 +19,10 @@ enum VolumeType: String, CaseIterable, Identifiable {
 nonisolated struct VolumeItem: Identifiable, Hashable, Equatable, Sendable {
     let volume: Volume
     let isInUse: Bool
-    var activity: ActivitySnapshot?
+    var task: ContainerSystemTask.Snapshot?
     var id: String { volume.id }
     var name: String { volume.name }
-    var createdAt: Date { volume.createdAt }
+    var createdAt: Date { volume.creationDate }
     var sizeSort: UInt64 { volume.sizeInBytes ?? 0 }
     var typeText: String { volumeType.rawValue }
     var stateText: String { isInUse ? "In use" : "Unused" }
@@ -53,12 +53,12 @@ nonisolated struct VolumeItem: Identifiable, Hashable, Equatable, Sendable {
         hasher.combine(volume.id)
         hasher.combine(volume.name)
         hasher.combine(isInUse)
-        hasher.combine(activity)
+        hasher.combine(task)
     }
 
     static func == (lhs: VolumeItem, rhs: VolumeItem) -> Bool {
         lhs.volume.id == rhs.volume.id && lhs.volume.name == rhs.volume.name
-            && lhs.isInUse == rhs.isInUse && lhs.activity == rhs.activity
+            && lhs.isInUse == rhs.isInUse && lhs.task == rhs.task
     }
 
 }
@@ -77,7 +77,7 @@ extension VolumeItem {
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
 
-        return formatter.string(from: volume.createdAt)
+        return formatter.string(from: volume.creationDate)
     }
 
     var formattedSize: String? {

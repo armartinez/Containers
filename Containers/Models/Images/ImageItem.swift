@@ -5,9 +5,9 @@
 //  Created by Axel Martinez on 2026/02/05.
 //
 
-import ContainerSystem
 import Containerization
 import ContainerizationOCI
+import ContainersCore
 import Foundation
 
 nonisolated struct ImageItem: Identifiable, Hashable, Equatable, Sendable {
@@ -19,24 +19,23 @@ nonisolated struct ImageItem: Identifiable, Hashable, Equatable, Sendable {
     let sizeInBytes: Int64
     let createdDate: Date
     let indexDigest: String
-    /// One per platform in the image's index, as apple/container's
-    /// `ImageResource.variants`.
+    /// One per platform in the image's index.
     let variants: [Variant]
     let isInUse: Bool
     let imageDescription: ImageDescription
-    var activity: ActivitySnapshot?
+    var task: ContainerSystemTask.Snapshot?
     /// Whether the image has landed, rather than the row standing in for one
     /// still on its way.
     private(set) var exists = true
 
     /// A row that only stands for the work of fetching an image.
     var isPending: Bool {
-        activity != nil && !exists
+        task != nil && !exists
     }
 
     var id: String {
-        if let activity {
-            return activity.id
+        if let task {
+            return task.id
         }
 
         // The reference is what the work that fetches an image knows it by,
@@ -99,13 +98,13 @@ nonisolated struct ImageItem: Identifiable, Hashable, Equatable, Sendable {
 
     /// A row for an image that is still arriving, which has no digest of its
     /// own to be known by until it has.
-    init(pending activity: ActivitySnapshot) {
+    init(pending task: ContainerSystemTask.Snapshot) {
         self.imageDescription = ImageDescription(
-            reference: activity.title,
+            reference: task.title,
             descriptor: Descriptor(mediaType: "", digest: "", size: 0)
         )
 
-        let (name, tag) = Self.nameAndTag(from: activity.title)
+        let (name, tag) = Self.nameAndTag(from: task.title)
 
         self.name = name
         self.tag = tag
@@ -117,7 +116,7 @@ nonisolated struct ImageItem: Identifiable, Hashable, Equatable, Sendable {
         self.sizeInBytes = 0
         self.createdDate = ImageSummary.unknownCreationDate
         self.isInUse = false
-        self.activity = activity
+        self.task = task
         self.exists = false
     }
 
@@ -142,14 +141,14 @@ nonisolated struct ImageItem: Identifiable, Hashable, Equatable, Sendable {
     // Hashable conformance
     func hash(into hasher: inout Hasher) {
         hasher.combine(indexDigest)
-        hasher.combine(activity)
+        hasher.combine(task)
     }
 
     // Equatable conformance
     static func == (lhs: ImageItem, rhs: ImageItem) -> Bool {
         lhs.indexDigest == rhs.indexDigest
             && lhs.variants == rhs.variants
-            && lhs.activity == rhs.activity
+            && lhs.task == rhs.task
     }
 }
 

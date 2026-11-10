@@ -7,6 +7,7 @@
 
 import AppKit
 import ContainerizationError
+import ContainersCore
 import SwiftUI
 
 /// What went wrong, put the way an alert is meant to put it: a title naming
@@ -48,6 +49,10 @@ struct ErrorAlert: Identifiable, Equatable {
     /// A `ContainerizationError` describes itself as `code: "message"`, of
     /// which only the message was written to be read.
     private static func message(for error: Error) -> String {
+        if let error = error as? ContainerCLIError {
+            return error.message
+        }
+
         guard let error = error as? ContainerizationError else {
             return error.localizedDescription
         }

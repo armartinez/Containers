@@ -5,9 +5,9 @@
 //  Created by Axel Martinez on 06/06/2026.
 //
 
-import ContainerSystem
 import Containerization
 import ContainerizationOCI
+import ContainersCore
 import Foundation
 import SwiftUI
 

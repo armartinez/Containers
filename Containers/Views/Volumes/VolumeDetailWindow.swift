@@ -5,7 +5,7 @@
 //  Created by Axel Martinez on 03/10/2026.
 //
 
-import ContainerSystem
+import ContainersCore
 import SwiftUI
 
 struct VolumeDetailWindow: View {

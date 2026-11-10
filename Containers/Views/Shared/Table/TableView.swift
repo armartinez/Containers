@@ -5,7 +5,7 @@
 //  Created by Axel Martinez on 30/05/2026.
 //
 
-import ContainerSystem
+import ContainersCore
 import SwiftUI
 
 enum TableStyle {
@@ -31,12 +31,12 @@ struct TableRowActions<Row> {
     /// The work a row only stands in for, whose own menu it gets instead.
     /// Such a row has nothing to show details of, and deleting it removes
     /// the work without asking, as there is nothing behind it to lose.
-    var pendingWork: (Row) -> ActivitySnapshot? = { _ in nil }
+    var pendingWork: (Row) -> ContainerSystemTask.Snapshot? = { _ in nil }
     /// The failure marked on a row, which the toolbar can clear.
-    var failure: (Row) -> ActivitySnapshot? = { _ in nil }
+    var failure: (Row) -> ContainerSystemTask.Snapshot? = { _ in nil }
 }
 
-extension TableRowActions where Row: ActivityRow {
+extension TableRowActions where Row: TaskRow {
     /// Rows that work can be under way on say for themselves what work they
     /// stand in for and what failure is marked on them.
     init(
@@ -70,7 +70,7 @@ where
     Columns: TableColumnContent<Row, KeyPathComparator<Row>>,
     Menu: View
 {
-    @Environment(SystemManager.self) private var system
+    @Environment(ContainerSystem.self) private var containerSystem
     @Environment(ActivityCenter.self) private var activityCenter
     @Environment(ReportManager.self) private var reportManager
 
@@ -131,14 +131,14 @@ where
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if system.status == .running {
+            if containerSystem.isRunning {
                 styledTable
             } else {
                 SystemStatusView()
             }
         }
-        .onChange(of: system.status, initial: true) {
-            guard system.status == .running else {
+        .onChange(of: containerSystem.status, initial: true) {
+            guard containerSystem.isRunning else {
                 onClear()
                 lastUpdated = nil
                 return
@@ -156,13 +156,13 @@ where
             if let activityKind {
                 // An action on these rows executes until they show its outcome.
                 activityCenter.addListReloader(reloaderID, ofKind: activityKind) {
-                    guard system.status == .running else { return }
+                    guard containerSystem.isRunning else { return }
                     await refresh()
                 }
             }
 
             Task {
-                guard system.status == .running else { return }
+                guard containerSystem.isRunning else { return }
                 await refresh()
             }
         }
@@ -185,9 +185,7 @@ where
         }
         .errorAlert($loadError)
         .confirmationDialog(
-            rowsToDelete.count > 1
-                ? "Delete \(rowsToDelete.count) \(pluralNoun)?"
-                : "Delete \(rowActions.noun)?",
+            deleteConfirmationTitle,
             isPresented: $isConfirmingDelete,
             titleVisibility: .visible
         ) {
@@ -200,14 +198,16 @@ where
                 rowsToDelete = []
             }
         } message: {
-            if rowsToDelete.count > 1 {
-                Text(
-                    "Delete \(rowsToDelete.count) \(pluralNoun.lowercased())? This cannot be undone."
-                )
-            } else if let row = rowsToDelete.first {
-                Text("Delete \(rowActions.name(row))? This cannot be undone.")
-            }
+            Text("You can’t undo this action.")
         }
+    }
+
+    private var deleteConfirmationTitle: String {
+        if rowsToDelete.count == 1, let row = rowsToDelete.first {
+            return "Are you sure you want to delete “\(rowActions.name(row))”?"
+        }
+
+        return "Are you sure you want to delete \(rowsToDelete.count) \(pluralNoun.lowercased())?"
     }
 
     // MARK: - Table
@@ -249,7 +249,7 @@ where
         let pendingWork = selected.compactMap(rowActions.pendingWork)
 
         if !selected.isEmpty, pendingWork.count == selected.count {
-            ActivityMenuItems(
+            TaskMenuItems(
                 work: pendingWork,
                 activityCenter: activityCenter,
                 reportManager: reportManager
@@ -427,7 +427,7 @@ struct SelectionActions: Equatable {
     var canStop = false
     var canDelete = false
     /// The failures marked on the rows the table shows, for the toolbar to clear.
-    var failures: [ActivitySnapshot] = []
+    var failures: [ContainerSystemTask.Snapshot] = []
 }
 
 /// A toolbar button pressed, for the view that has the rows to act on.

@@ -6,12 +6,12 @@
 //
 
 import AppKit
-import ContainerSystem
+import ContainersCore
 import SwiftUI
 
 /// The system's status; clicking it opens the same actions as the menu bar item.
 struct SystemStatusControl: View {
-    @Environment(SystemManager.self) private var system
+    @Environment(ContainerSystem.self) private var containerSystem
     @Environment(SystemActions.self) private var systemActions
     @Environment(\.openWindow) private var openWindow
 
@@ -24,12 +24,12 @@ struct SystemStatusControl: View {
     var body: some View {
         Button(action: showMenu) {
             HStack(spacing: 4) {
-                Image(systemName: system.status.symbol)
-                    .foregroundStyle(system.status.color)
+                Image(systemName: containerSystem.status.symbol)
+                    .foregroundStyle(containerSystem.status.color)
                     .frame(width: 13)
 
-                Text(system.status.message)
-                    .foregroundStyle(system.status.color)
+                Text(containerSystem.status.message)
+                    .foregroundStyle(containerSystem.status.color)
             }
             .overlay(alignment: .trailing) {
                 Image(systemName: "chevron.down")

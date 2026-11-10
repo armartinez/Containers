@@ -5,11 +5,12 @@
 //  Created by Axel Martinez on 2026/02/05.
 //
 
-import ContainerSystem
+import ContainersCore
 import SwiftUI
 
 struct VolumesView: View {
     @Environment(VolumeManager.self) private var volumeManager
+    @Environment(ContainerSystem.self) private var containerSystem
     @Environment(ActivityCenter.self) private var activityCenter
     @Environment(\.openWindow) private var openWindow
 
@@ -52,8 +53,8 @@ struct VolumesView: View {
             noun: "Volume",
             name: \.name,
             open: openDetails(for:),
-            // Not a volume a container is using.
-            canDelete: { !$0.isExecuting && !$0.isInUse },
+            // Not a volume a container is using, nor one the CLI's API server has loaded.
+            canDelete: { !containerSystem.isReadOnly && !$0.isExecuting && !$0.isInUse },
             delete: deleteVolumes
         )
     }
@@ -72,7 +73,7 @@ struct VolumesView: View {
             onRefresh: listVolumes
         ) {
             TableColumn("Name", value: \.name) { volume in
-                ActivityRowName(
+                TaskRowName(
                     row: volume,
                     activityCenter: activityCenter,
                     openReport: openWindow.report
@@ -114,6 +115,13 @@ struct VolumesView: View {
                     .rowForeground(for: volume)
             }
             .width(min: 140, ideal: 180, max: 220)
+        }
+        // Beside the CLI, volumes it makes or removes.
+        .onChange(of: volumeManager.lastSharedVolumeChange) {
+            Task {
+                guard containerSystem.isRunning else { return }
+                try? await listVolumes()
+            }
         }
     }
 

@@ -23,7 +23,7 @@ enum AppInfo {
     static let release: (title: String, features: [Feature]) =
         UserDefaults.isFirstLaunch
         ? ("Welcome to", welcomeFeatures)
-        : ("What's New in", updateFeatures)
+        : ("What’s New in", updateFeatures)
 
     /// Whether an update to the version in the Info.plist shows `updateFeatures`.
     /// Set it for releases worth announcing; leave it off for small fixes.

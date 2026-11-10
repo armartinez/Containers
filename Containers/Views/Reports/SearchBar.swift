@@ -5,7 +5,7 @@
 //  Created by Axel Martinez on 26/09/2026.
 //
 
-import ContainerSystem
+import ContainersCore
 import SwiftUI
 
 /// The reports' searches: all, each kind, and those saved. Sits in the

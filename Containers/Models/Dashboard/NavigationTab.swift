@@ -5,7 +5,7 @@
 //  Created by Axel Martinez on 2026/02/05.
 //
 
-import ContainerSystem
+import ContainersCore
 
 enum NavigationTab: String, Identifiable, Equatable {
     case containers

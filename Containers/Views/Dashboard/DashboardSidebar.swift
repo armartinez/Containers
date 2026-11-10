@@ -5,12 +5,13 @@
 //  Created by Axel Martinez on 2026/02/05.
 //
 
-import ContainerSystem
+import ContainersCore
 import SwiftUI
 
 struct DashboardSidebar: View {
     @Environment(ReportManager.self) private var reportManager
     @Environment(\.sidebarRowSize) private var sidebarRowSize
+    @Environment(\.isEnabled) private var isSidebarEnabled
 
     @Binding var selection: NavigationTab
 
@@ -30,16 +31,37 @@ struct DashboardSidebar: View {
     }
 
     private func row(for tab: NavigationTab) -> some View {
-        Label {
-            Text(tab.displayTitle)
+        let isEnabled = isAvailable(tab)
+
+        // A sidebar doesn't dim a disabled row, so it's greyed here. An enabled row is left to the
+        // sidebar's own styles.
+        return Label {
+            if isEnabled {
+                Text(tab.displayTitle)
+            } else {
+                Text(tab.displayTitle)
+                    .foregroundStyle(.tertiary)
+            }
         } icon: {
             // Console's icon size; `imageScale` is ignored in a sidebar.
-            Image(systemName: tab.icon)
-                .font(.system(size: iconSize))
+            if isEnabled {
+                Image(systemName: tab.icon)
+                    .font(.system(size: iconSize))
+            } else {
+                Image(systemName: tab.icon)
+                    .font(.system(size: iconSize))
+                    .foregroundStyle(.tertiary)
+            }
         }
         // Unread reports, counted as Mail counts unread mail.
-        .badge(tab == .reports ? reportManager.unreadCount : 0)
+        .badge(tab == .reports && reportManager.isAvailable ? reportManager.unreadCount : 0)
         .tag(tab)
+        .selectionDisabled(!isEnabled)
+        .disabled(!isEnabled)
+    }
+
+    private func isAvailable(_ tab: NavigationTab) -> Bool {
+        isSidebarEnabled && (tab != .reports || reportManager.isAvailable)
     }
 
     private var iconSize: CGFloat {
