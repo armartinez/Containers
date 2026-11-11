@@ -178,7 +178,7 @@ struct NetworkSettingsView: View {
         resolverDirectory = UserDefaults.resolverDirectory
         dnsDomains =
             resolverDirectory
-            .map(networkManager.listDomains(in:))?
+            .map(networkManager.domains(in:))?
             .map(DNSDomainSetting.init(name:)) ?? []
     }
 }

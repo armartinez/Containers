@@ -13,6 +13,7 @@ extension ContainerSystem {
     /// Shows the CLI's folder read-only once the CLI starts, while the system is stopped with compatibility on.
     public func watchForAPIServer(in appRoot: URL) {
         guard mode == .cliCompatibility, !isRunning, status != .starting else { return }
+
         watchFolder(appRoot, onAPIServerStart: .switchToReadOnly)
     }
 

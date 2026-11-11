@@ -56,7 +56,7 @@ struct NetworkManagerTests {
 
         let networkManager = NetworkManager()
 
-        #expect(networkManager.listDomains(in: directory) == ["test"])
+        #expect(networkManager.domains(in: directory) == ["test"])
     }
 
     @Test("Other resolvers are ignored")
@@ -68,7 +68,7 @@ struct NetworkManagerTests {
 
         let networkManager = NetworkManager()
 
-        #expect(networkManager.listDomains(in: directory) == ["test"])
+        #expect(networkManager.domains(in: directory) == ["test"])
     }
 
     /// The CLI passes over a file it cannot read a domain out of, so a file
@@ -81,7 +81,7 @@ struct NetworkManagerTests {
 
         let networkManager = NetworkManager()
 
-        #expect(networkManager.listDomains(in: directory).isEmpty)
+        #expect(networkManager.domains(in: directory).isEmpty)
     }
 
     @Test("Domains are sorted")
@@ -94,7 +94,7 @@ struct NetworkManagerTests {
 
         let networkManager = NetworkManager()
 
-        #expect(networkManager.listDomains(in: directory) == ["alpha", "mike", "zulu"])
+        #expect(networkManager.domains(in: directory) == ["alpha", "mike", "zulu"])
     }
 
     @Test("Localhost resolver is read")
@@ -112,7 +112,7 @@ struct NetworkManagerTests {
 
         let networkManager = NetworkManager()
 
-        #expect(networkManager.listDomains(in: directory) == ["local"])
+        #expect(networkManager.domains(in: directory) == ["local"])
     }
 
     @Test("Missing directory yields no domains")
@@ -120,6 +120,6 @@ struct NetworkManagerTests {
         let absent = URL.temporaryDirectory
             .appendingPathComponent("absent-\(UUID().uuidString)")
 
-        #expect(NetworkManager().listDomains(in: absent).isEmpty)
+        #expect(NetworkManager().domains(in: absent).isEmpty)
     }
 }

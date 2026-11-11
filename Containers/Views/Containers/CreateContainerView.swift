@@ -586,7 +586,7 @@ struct CreateContainerView: View {
         ) { progress in
             func create(progress: Progress) async throws -> String {
                 try await containerManager.create(
-                    imageReference: imageReference,
+                    from: imageReference,
                     arguments: [],
                     process: process,
                     configuration: configuration,

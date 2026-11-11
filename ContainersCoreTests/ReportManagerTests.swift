@@ -52,14 +52,14 @@ struct ReportManagerTests {
             await reportManager.record(kind: .container, name: "web", message: "The container stopped.", error: Failure())
         )
 
-        await reportManager.markRead([report.id])
+        await reportManager.markRead(ids: [report.id])
 
-        #expect(reportManager.isRead(report.id))
+        #expect(reportManager.isRead(id: report.id))
         #expect(reportManager.unreadCount == 0)
 
         await reportManager.refresh()
 
-        #expect(reportManager.isRead(report.id))
+        #expect(reportManager.isRead(id: report.id))
     }
 
     @Test("Stopped system records nothing")

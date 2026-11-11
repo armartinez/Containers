@@ -65,7 +65,7 @@ public final class ContainerManager {
     /// - Throws: ``ContainerCLIError/apiServerRunning`` while the system is read-only, or an error if a container with the same ID exists or the container can't be created.
     @discardableResult
     public func create(
-        imageReference: String,
+        from imageReference: String,
         arguments: [KeyValue],
         process: ContainerProcess,
         configuration: ContainerConfiguration,
@@ -186,7 +186,7 @@ public final class ContainerManager {
     /// - Parameter id: The container's ID.
     /// - Returns: The container.
     /// - Throws: An error if there's no container with that ID.
-    public func get(id: String) async throws -> ContainerSnapshot {
+    public func container(withID id: String) async throws -> ContainerSnapshot {
         let service = try containerSystem.containerService
         let snapshots = await service.list()
 

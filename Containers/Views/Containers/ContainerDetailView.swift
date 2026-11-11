@@ -64,7 +64,7 @@ struct ContainerDetailWindow: View {
         defer { isLoading = false }
 
         do {
-            snapshot = try await containerManager.get(id: id)
+            snapshot = try await containerManager.container(withID: id)
             loadError = nil
         } catch {
             snapshot = nil
@@ -299,9 +299,7 @@ struct ContainerDetailView: View {
         }
 
         do {
-            let updatedSnapshot = try await containerManager.get(
-                id: container.id
-            )
+            let updatedSnapshot = try await containerManager.container(withID: container.id)
             let updatedContainer = ContainerItem(updatedSnapshot)
 
             snapshot = updatedSnapshot
@@ -383,6 +381,6 @@ struct ContainerDetailView: View {
     )
     .frame(width: 550)
     .environment(ContainerManager.preview)
-    .environment(ActivityCenter(reports: reportManager))
+    .environment(ActivityCenter(reportManager: reportManager))
     .environment(reportManager)
 }

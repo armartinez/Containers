@@ -208,6 +208,6 @@ struct ImagesView: View {
     .environment(NetworkManager.preview)
     .environment(ContainerSystem.preview)
     .environment(SystemActions(containerSystem: .preview))
-    .environment(ActivityCenter(reports: reportManager))
+    .environment(ActivityCenter(reportManager: reportManager))
     .environment(reportManager)
 }

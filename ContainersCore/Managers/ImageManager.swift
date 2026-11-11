@@ -673,7 +673,7 @@ public final class ImageManager {
     ///   - platform: The platform whose layers to return.
     /// - Returns: The image's layers.
     /// - Throws: An error if the image or its configuration can't be read.
-    public func getImageLayers(imageReference: String, platform: Platform) async throws -> [ImageLayer] {
+    public func layers(of imageReference: String, platform: Platform) async throws -> [ImageLayer] {
         logger.info("Getting layer information for image: \(imageReference)")
 
         let image = try await containerSystem.imageService.image(for: imageReference)

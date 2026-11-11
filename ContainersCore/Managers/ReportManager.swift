@@ -94,7 +94,7 @@ public final class ReportManager {
     /// Marks reports as read.
     ///
     /// - Parameter ids: The IDs of the reports to mark.
-    public func markRead(_ ids: [String]) async {
+    public func markRead(ids: [String]) async {
         let ids = Set(ids)
         let unread = reports.filter { !$0.isRead && ids.contains($0.id) }.map(\.id)
 
@@ -133,7 +133,7 @@ public final class ReportManager {
     ///
     /// - Parameter id: The report's ID.
     /// - Returns: `true` if the report has been read or doesn't exist.
-    public func isRead(_ id: String) -> Bool {
+    public func isRead(id: String) -> Bool {
         reports.first { $0.id == id }?.isRead ?? true
     }
 
@@ -141,7 +141,7 @@ public final class ReportManager {
     ///
     /// - Parameter id: The report's ID.
     /// - Returns: The report, or `nil` if it doesn't exist.
-    public func get(id: String) async -> Report? {
+    public func report(withID id: String) async -> Report? {
         guard let service = service() else { return nil }
         return await service.get(id: id)
     }

@@ -471,7 +471,7 @@ struct ContainerCLITests {
 
         await #expect(throws: ContainerCLIError.apiServerRunning) {
             try await containerManager.create(
-                imageReference: "alpine",
+                from: "alpine",
                 arguments: [],
                 process: ContainerProcess(),
                 configuration: configuration,

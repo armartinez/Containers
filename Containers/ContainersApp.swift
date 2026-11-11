@@ -52,7 +52,7 @@ struct ContainersApp: App {
 
         _containerSystem = State(initialValue: containerSystem)
         _reportManager = State(initialValue: reportManager)
-        _activityCenter = State(initialValue: ActivityCenter(reports: reportManager))
+        _activityCenter = State(initialValue: ActivityCenter(reportManager: reportManager))
         _systemActions = State(initialValue: systemActions)
 
         do {

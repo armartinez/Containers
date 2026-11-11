@@ -338,7 +338,7 @@ struct DashboardView: View {
 
         guard !ids.isEmpty else { return }
 
-        Task { await reportManager.markRead(ids) }
+        Task { await reportManager.markRead(ids: ids) }
     }
 
     private func chooseSystemMode(_ mode: ContainerSystem.Mode) {

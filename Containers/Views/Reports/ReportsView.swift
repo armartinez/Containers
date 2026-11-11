@@ -144,7 +144,7 @@ struct ReportsView: View {
 
             guard !Task.isCancelled else { return }
 
-            await reportManager.markRead(selected)
+            await reportManager.markRead(ids: selected)
         }
     }
 

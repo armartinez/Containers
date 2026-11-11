@@ -57,9 +57,9 @@ struct ReportDetailWindow: View {
     }
 
     private func load() async {
-        entry = await reportManager.get(id: id)
+        entry = await reportManager.report(withID: id)
         text = await reportManager.body(of: id) ?? ""
 
-        await reportManager.markRead([id])
+        await reportManager.markRead(ids: [id])
     }
 }

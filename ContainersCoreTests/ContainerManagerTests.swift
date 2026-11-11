@@ -49,7 +49,7 @@ struct ContainerManagerTests {
 
         let containerManager = ContainerManager(testSystem: containerSystem)
         do {
-            _ = try await containerManager.get(id: "nonexistent-container-id")
+            _ = try await containerManager.container(withID: "nonexistent-container-id")
             Issue.record("Expected ContainerizationError")
         } catch let error as ContainerizationError {
             #expect(error.code == .notFound)

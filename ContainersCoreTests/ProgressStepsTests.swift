@@ -39,7 +39,11 @@ struct ProgressStepsTests {
                 await step.updateHandler()([.addTotalItems(4), .addItems(1)])
 
                 #expect(progress.localizedDescription == "Fetching builder image")
-                #expect(progress.localizedAdditionalDescription == "1 of 4")
+                #expect(step.completedUnitCount == 1)
+                #expect(step.totalUnitCount == 4)
+                // Foundation words the count in the Mac's language, so it's compared rather than spelled out.
+                #expect(!progress.localizedAdditionalDescription.isEmpty)
+                #expect(progress.localizedAdditionalDescription == step.localizedAdditionalDescription)
             }
         }
     }

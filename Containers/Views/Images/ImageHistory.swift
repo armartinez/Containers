@@ -159,8 +159,8 @@ struct ImageHistory: View {
         defer { isLoading = false }
 
         do {
-            let layerInfo = try await imageManager.getImageLayers(
-                imageReference: imageReference,
+            let layerInfo = try await imageManager.layers(
+                of: imageReference,
                 platform: platform
             )
 

@@ -20,6 +20,7 @@ struct DefaultImageService: ImageService {
     let imageStore: ImageStore
     let contentStore: ContentStore
     let snapshotsPath: URL
+
     private let ingestPath: URL
     private let log: Logger
 

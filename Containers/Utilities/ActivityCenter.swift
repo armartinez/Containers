@@ -90,10 +90,10 @@ final class ActivityCenter {
     /// outcome before it stops executing.
     @ObservationIgnored private var listReloaders: [Kind: [UUID: () async -> Void]] = [:]
 
-    private let reports: ReportManager
+    private let reportManager: ReportManager
 
-    init(reports: ReportManager) {
-        self.reports = reports
+    init(reportManager: ReportManager) {
+        self.reportManager = reportManager
     }
 
     func tasks(ofKind kind: Kind) -> [ContainerSystemTask] {
@@ -210,7 +210,7 @@ final class ActivityCenter {
             return false
         }
 
-        return reports.isRead(reportID)
+        return reportManager.isRead(id: reportID)
     }
 
     private func task(_ id: String) -> ContainerSystemTask? {
@@ -222,7 +222,7 @@ final class ActivityCenter {
         task.startedAt = Date()
 
         let attempt = task.attempt
-        let reports = reports
+        let reportManager = reportManager
         let progress = Progress.discreteProgress(totalUnitCount: 0)
 
         task.progress = ProgressObserver(progress)
@@ -250,7 +250,7 @@ final class ActivityCenter {
 
                 task.error = error
 
-                let entry = await reports.record(
+                let entry = await reportManager.record(
                     kind: task.reportKind(for: error),
                     name: task.title,
                     message: task.failureTitle,
@@ -304,7 +304,7 @@ extension ActivityCenter {
             if let task = working.first(where: { $0.id == row.id }) {
                 row.task = ContainerSystemTask.Snapshot(task)
             } else if let name = reportName(row),
-                let report = reports.latestReport(named: name, ofKind: reportKinds),
+                let report = reportManager.latestReport(named: name, ofKind: reportKinds),
                 !report.isRead
             {
                 // Keyed by the row: an image is reported under the reference

@@ -95,7 +95,7 @@ public final class NetworkManager {
     ///
     /// - Parameter directory: The folder to read, usually ``resolverDirectory``.
     /// - Returns: The domains, or an empty array if the folder can't be read.
-    public func listDomains(in directory: URL) -> [String] {
+    public func domains(in directory: URL) -> [String] {
         let fileManager = FileManager.default
         let isScoped = directory.startAccessingSecurityScopedResource()
 
