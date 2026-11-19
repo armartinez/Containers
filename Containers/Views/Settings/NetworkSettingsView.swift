@@ -17,7 +17,6 @@ struct NetworkSettingsView: View {
     @State private var systemMode = UserDefaults.systemMode ?? .default
     @State private var dnsDomains: [DNSDomainSetting] = []
     @State private var defaultDomain: String?
-    @State private var selectedDomain: String?
     @State private var resolverDirectory: URL? = UserDefaults.resolverDirectory
 
     var body: some View {
@@ -30,58 +29,26 @@ struct NetworkSettingsView: View {
     }
 
     private var dnsDomainsSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("DNS Domains")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-
-                Text(dnsDomainsDescription)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(.horizontal, 10)
-
-            // Without the folder to read, there is no saying whether there are domains.
-            SettingsList(
-                items: domainChoices,
-                emptyMessage: resolverDirectory == nil ? "DNS Domains Unavailable" : "No DNS Domains",
-                selection: $selectedDomain
-            ) { domain in
-                HStack {
-                    Text(domain.name)
-
-                    Spacer(minLength: 12)
-
-                    if domain.name == defaultDomain {
-                        Text("Default")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            } footer: {
-                if let selectedDomain, selectedDomain == defaultDomain {
-                    Button("Don’t Use as Default", systemImage: "star.slash") {
-                        setDefaultDomain(nil)
-                    }
-                    .help("Stop naming new containers in this domain")
-                    .disabled(systemMode == .cliCompatibility)
-                } else {
-                    Button("Use as Default", systemImage: "star") {
-                        setDefaultDomain(selectedDomain)
-                    }
-                    .help("Name new containers in this domain")
-                    .disabled(systemMode == .cliCompatibility || selectedDomain == nil)
-                }
-            }
-
+        SettingsSection(title: "DNS Domains", description: dnsDomainsDescription) {
             if resolverDirectory == nil {
                 SettingsWarning(
                     "Containers needs your permission to read the resolver files in /etc/resolver before it can show the domains kept there.",
                     actionTitle: "Allow Access…",
                     action: grantResolverAccess
                 )
-                .padding(.horizontal, 10)
+            } else if domainChoices.isEmpty {
+                Text("No DNS domains")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(domainChoices) { domain in
+                    DNSDomainRow(
+                        name: domain.name,
+                        isDefault: domain.name == defaultDomain,
+                        canChangeDefault: systemMode != .cliCompatibility
+                    ) { isDefault in
+                        setDefaultDomain(isDefault ? domain.name : nil)
+                    }
+                }
             }
         }
         // The folder whose config.toml applies changes with container CLI compatibility.
@@ -186,6 +153,44 @@ struct NetworkSettingsView: View {
 private struct DNSDomainSetting: Identifiable {
     var id: String { name }
     var name: String
+}
+
+/// A domain laid out as Printers & Scanners lists printers, with the action to make it the default, or stop it
+/// being one, shown while the pointer is over it.
+private struct DNSDomainRow: View {
+    let name: String
+    let isDefault: Bool
+    let canChangeDefault: Bool
+    let onSetDefault: (Bool) -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "network")
+                .foregroundStyle(.secondary)
+                .frame(width: 20)
+
+            Text(name)
+
+            Spacer(minLength: 12)
+
+            if isHovering && canChangeDefault {
+                Button(isDefault ? "Don’t Use as Default" : "Use as Default") {
+                    onSetDefault(!isDefault)
+                }
+                .controlSize(.small)
+                .help(isDefault ? "Stop naming new containers in this domain" : "Name new containers in this domain")
+            } else if isDefault {
+                Text("Default")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        // Tall enough for the button, so the row doesn't grow when it appears.
+        .frame(minHeight: 20)
+        .contentShape(Rectangle())
+        .onHover { isHovering = $0 }
+    }
 }
 
 extension URL {

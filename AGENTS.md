@@ -42,7 +42,7 @@ SwiftUI / AppKit views
 ```
 
 - `ContainerSystem` (`ContainerSystem.shared`) is the container system itself: its mode, status and lifecycle, the CLI beside it (`+CLI`), and the services it runs, created on start and released on stop. It holds the state the managers share, such as setup progress and reports, and installs the prerequisites (kernel, init image) on first start.
-- The framework's public objects are `ContainerSystem` and one manager per domain, along with the value types they take and return, the way Apple's container client puts system handles (`ClientHealthCheck`) beside its per-domain clients (`ContainerClient`, `ClientImage`). The system is not a manager: it's the one running thing the managers work in. The services and everything else below them are internal.
+- The framework's public objects are `ContainerSystem` and one manager per domain, along with the value types they take and return. The system is not a manager: it's the one running thing the managers work in. The services and everything else below them are internal.
 - Managers are thin handles over the container system, one per domain. `ImageManager()` uses `ContainerSystem.shared`; tests pass a `MockContainerSystem` through `init(testSystem:)`. A manager can use any service, but never another manager.
 - Services are what the container system runs: internal types that hold the state of containers, images, kernels and reports. A service is an actor only when it has mutable state to protect (`DefaultContainerService`, `ReadOnlyContainerService`, `ReportService`, `DNSService`); one that only holds `let`s is a `Sendable` struct. Only the container system creates them, when the system starts, and lets go of them when it stops. Everything else reaches them through the container system's internal, throwing `…Service` properties: managers and `Build/`. Nothing works while the system is stopped, by design.
 - A service the system runs differently beside the container CLI's API server is a protocol (`ContainerService`, `ImageService`, `NetworkService`, `VolumeService`) with a `Default…` variant for the app's own mode and a `ReadOnly…` one that only reads the CLI's folder and throws `ContainerCLIError.apiServerRunning` for anything else. The container system picks the variants when the system starts, so managers never check the mode.
@@ -52,7 +52,7 @@ SwiftUI / AppKit views
 
 ## ContainersCore layout
 
-Layer first, with domains inside each layer, like Apple's container project (`ContainerResource/`, `ContainerAPIService/Client/`, `ContainerAPIService/Server/`):
+Layer first, with domains inside each layer:
 
 - `System/`: the public `ContainerSystem` and its extensions (`+CLI`, `+Configuration`, `+Prerequisites`, `+Services`), with the internal `Services/` inside it (`ContainerService`, `ImageService`, `KernelService`, `ReportService`), since the system owns the services. "Runtime" is kept for what it means in Apple's container CLI: the helper that runs one container (`runtimeHandler`, `runtime-configuration.json`).
 - `Managers/`: `ContainerManager`, `ImageManager`, `VolumeManager`, `NetworkManager`, `ReportManager`.
@@ -62,15 +62,14 @@ Layer first, with domains inside each layer, like Apple's container project (`Co
 
 ## Containers (app) layout
 
-Layer first, like Apple's SwiftUI samples:
+Layer first:
 
 - `ContainersApp.swift`: scenes, window IDs and the objects put in the environment.
-- `Models/`: value types, grouped by feature to mirror `Views/` (`Containers/`, `Images/`, `Volumes/`, `Reports/`, `Dashboard/`, `Shared/`). Models never fetch or do work.
+- `Models/`: value types, grouped by feature to mirror `Views/` (`Containers/`, `Images/`, `Volumes/`, `Reports/`, `Dashboard/`, `System/`), with `App/` for what describes the app itself (`AppInfo`, `AppVersion`, `AppLink`) and `Shared/` for what several features use (`Icon`, `Tips`). Models never fetch or do work. How the app presents a model, including a `ContainersCore` type, is a `Type+Topic.swift` extension beside it in the same feature folder (`Report+Appearance`, `ContainerSystem.Status+Message`).
 - `ViewModels/`: `@Observable` objects that hold state and actions for views: `RegistryLookup`, owned by the pull sheet with `@State`, and `SystemActions`, created by the app and shared by the menu bar and the status bar.
-- `Utilities/`: app-wide objects not tied to a screen (`ActivityCenter`), plus support types (`ProgressObserver`, `WindowResizer`).
+- `Utilities/`: app-wide objects not tied to a screen (`ActivityCenter`), support types (`ProgressObserver`, `WindowResizer`), and every extension of Apple's framework types that isn't a view, even one a single feature uses (`UserDefaults+Settings`, `NSSavePanel+Sheet`, `NSToolbar+Shape`, `OpenWindowAction+Report`).
 - `Controllers/`: AppKit controllers only, such as the `NSToolbarDelegate` objects. Their `NSViewRepresentable` binders live in `Views/`.
-- `Views/<Feature>/`: one folder per screen. `Views/Shared/` holds complete units that appear once on a screen (`TableView`, `DetailView`, `CreateView`, `ScopeBar`). `Views/Components/` holds small reusable elements that can repeat on a screen (`BarToggle`, `SearchToken`, form rows).
-- `Extensions/`: one `Type+Topic.swift` per extension.
+- `Views/<Feature>/`: views only, one folder per screen, plus extensions of view types that screen uses (`View+FixedSidebarWidth` in `Views/Settings/`). `Views/Shared/` holds complete units that appear once on a screen (`TableView`, `DetailView`, `CreateView`, `ScopeBar`). `Views/Components/` holds small reusable elements that can repeat on a screen (`BarToggle`, `SearchToken`, form rows), and the view extensions several screens share (`View+RowTint`, `View+DefaultAction`, `Image+Icon`).
 - `Supporting Files/`: Info.plist, assets and entitlements. Don't rename it; the Info.plist membership exception depends on the path.
 
 Rules for where logic goes:

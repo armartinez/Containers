@@ -18,7 +18,7 @@ struct CreateImageMethod: View {
     var body: some View {
         VStack(spacing: 48) {
             VStack(spacing: 10) {
-                Image(systemName: "cube.transparent")
+                Image(Icon.image)
                     .font(.system(size: 68, weight: .regular))
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(Color(nsColor: .systemBlue))

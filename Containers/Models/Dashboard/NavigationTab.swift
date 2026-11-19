@@ -26,16 +26,16 @@ enum NavigationTab: String, Identifiable, Equatable {
         }
     }
 
-    var icon: String {
+    var icon: Icon {
         switch self {
         case .containers:
-            "shippingbox"
+            .container
         case .images:
-            "cube.transparent"
+            .image
         case .volumes:
-            "internaldrive"
+            .volume
         case .reports:
-            "list.clipboard"
+            .system("list.clipboard")
         }
     }
 

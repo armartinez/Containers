@@ -32,13 +32,15 @@ struct VolumeDetailWindow: View {
                         height: DetailPlaceholder.volume.height
                     )
             } else {
-                ContentUnavailableView(
-                    "Volume Not Found",
-                    systemImage: "externaldrive",
-                    description: Text(
-                        "The volume '\(id)' no longer exists."
-                    )
-                )
+                ContentUnavailableView {
+                    Label {
+                        Text("Volume Not Found")
+                    } icon: {
+                        Image(Icon.volume)
+                    }
+                } description: {
+                    Text("The volume '\(id)' no longer exists.")
+                }
                 .frame(width: 550, height: 320)
             }
         }

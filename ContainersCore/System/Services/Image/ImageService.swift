@@ -15,10 +15,7 @@ import Foundation
 
 /// A service that keeps the system's images, and unpacks them for containers to run.
 protocol ImageService: Sendable {
-    // Requirements so that both variants share the reads in the extension below, written once. A
-    // requirement can't be private, so the rest of the module sees the stores too: go through the
-    // service's methods instead. Only the build pipeline uses `contentStore` itself, since BuildKit
-    // reads and writes its blobs through it.
+    // For the reads the variants share in the extension below. Use the service's methods instead.
     var imageStore: ImageStore { get }
 
     /// The content the image store's images are made of, which a build also reads and writes.

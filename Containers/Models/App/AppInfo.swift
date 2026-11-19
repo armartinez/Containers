@@ -11,7 +11,7 @@ import Foundation
 /// what changed in this release after an update.
 enum AppInfo {
     struct Feature {
-        let icon: String
+        let icon: Icon
         let title: String
         let description: String
     }
@@ -34,17 +34,17 @@ enum AppInfo {
 
     private static let welcomeFeatures: [Feature] = [
         Feature(
-            icon: "shippingbox",
+            icon: .container,
             title: "Run Linux containers",
             description: "Create and run Linux containers as lightweight virtual machines on your Mac."
         ),
         Feature(
-            icon: "cube.transparent",
+            icon: .image,
             title: "OCI-compatible images support",
             description: "Pull and run images from container registries, build from a Dockerfile, or load from a local archive."
         ),
         Feature(
-            icon: "cpu",
+            icon: .system("cpu"),
             title: "Optimized for Apple Silicon",
             description: "Written in Swift and designed to get the most out of Apple Silicon."
         ),

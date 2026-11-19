@@ -24,9 +24,16 @@ struct SystemStatusControl: View {
     var body: some View {
         Button(action: showMenu) {
             HStack(spacing: 4) {
-                Image(systemName: containerSystem.status.symbol)
-                    .foregroundStyle(containerSystem.status.color)
-                    .frame(width: 13)
+                Group {
+                    if let level = containerSystem.status.gaugeLevel {
+                        StatusGauge(level: level)
+                    } else {
+                        Image(systemName: containerSystem.status.symbol)
+                    }
+                }
+                .foregroundStyle(containerSystem.status.color)
+                .animation(.default, value: containerSystem.status)
+                .frame(width: 19)
 
                 Text(containerSystem.status.message)
                     .foregroundStyle(containerSystem.status.color)
@@ -102,6 +109,10 @@ struct SystemStatusControl: View {
     ) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
         item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)
+        // macOS 27 hides menu item images unless an item asks to show them.
+        if #available(macOS 27, *) {
+            item.preferredImageVisibility = .visible
+        }
         item.isEnabled = isEnabled
         item.target = target
         return item
@@ -114,6 +125,33 @@ struct SystemStatusControl: View {
             } catch {
                 errorAlert = ErrorAlert(error.title, error: error.underlying)
             }
+        }
+    }
+
+    /// The gauge symbol in parts, so its needle can turn to a level instead of being replaced.
+    private struct StatusGauge: View {
+        let level: Double
+
+        var body: some View {
+            let angle = Angle.degrees(270 * level)
+
+            ZStack {
+                // The dot under the needle is cut out, as in the gauge symbols.
+                Image("gauge.dial")
+                    .mask {
+                        ZStack {
+                            Rectangle()
+                            Image("gauge.needle.clearance")
+                                .rotationEffect(angle)
+                                .blendMode(.destinationOut)
+                        }
+                        .compositingGroup()
+                    }
+
+                Image("gauge.needle")
+                    .rotationEffect(angle)
+            }
+            .animation(.spring(duration: 0.6, bounce: 0.3), value: level)
         }
     }
 

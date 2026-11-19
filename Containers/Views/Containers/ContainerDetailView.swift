@@ -36,14 +36,15 @@ struct ContainerDetailWindow: View {
                         height: DetailPlaceholder.container.height
                     )
             } else {
-                ContentUnavailableView(
-                    "Container Not Found",
-                    systemImage: "shippingbox",
-                    description: Text(
-                        loadError?.localizedDescription
-                            ?? "The container '\(id)' no longer exists."
-                    )
-                )
+                ContentUnavailableView {
+                    Label {
+                        Text("Container Not Found")
+                    } icon: {
+                        Image(Icon.container)
+                    }
+                } description: {
+                    Text(loadError?.localizedDescription ?? "The container '\(id)' no longer exists.")
+                }
                 .frame(width: 550, height: 320)
             }
         }
@@ -204,13 +205,15 @@ struct ContainerDetailView: View {
                 // The window stays hidden until ready.
                 Color.clear
             } else {
-                ContentUnavailableView(
-                    "Container Details Unavailable",
-                    systemImage: "shippingbox",
-                    description: Text(
-                        "The full container snapshot could not be loaded."
-                    )
-                )
+                ContentUnavailableView {
+                    Label {
+                        Text("Container Details Unavailable")
+                    } icon: {
+                        Image(Icon.container)
+                    }
+                } description: {
+                    Text("The full container snapshot could not be loaded.")
+                }
             }
         }
         // Outermost, or the window can't read it. A failed load still counts

@@ -33,13 +33,15 @@ struct ImageDetailWindow: View {
                         height: DetailPlaceholder.image.height
                     )
             } else {
-                ContentUnavailableView(
-                    "Image Not Found",
-                    systemImage: "cube.transparent",
-                    description: Text(
-                        "The image '\(imageReference)' no longer exists."
-                    )
-                )
+                ContentUnavailableView {
+                    Label {
+                        Text("Image Not Found")
+                    } icon: {
+                        Image(Icon.image)
+                    }
+                } description: {
+                    Text("The image '\(imageReference)' no longer exists.")
+                }
                 .frame(width: 550, height: 320)
             }
         }

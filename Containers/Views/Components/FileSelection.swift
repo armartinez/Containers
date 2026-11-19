@@ -9,18 +9,8 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
+/// A pop-up of places to choose among, ending in a command that opens the panel: the path is picked, never written.
 struct FileSelection: View {
-    /// How the choice is presented.
-    enum Style {
-        /// A pop-up of places to choose among, and nothing else: the path is
-        /// picked, never written.
-        case popUp
-        /// The path itself, editable, beside a button that opens the panel —
-        /// what suits a field whose answer can be written or made, not only
-        /// found.
-        case field
-    }
-
     /// How the pop-up writes a location out.
     enum Label {
         /// The name Finder gives it, localised and without the path.
@@ -59,7 +49,6 @@ struct FileSelection: View {
     let canCreateDirectories: Bool
     let defaultDirectory: URL?
     let locations: [URL]
-    let style: Style
     let label: Label
     let recents: Recents?
     let suggestedSaveFilename: String?
@@ -77,7 +66,6 @@ struct FileSelection: View {
         canCreateDirectories: Bool = false,
         defaultDirectory: URL? = nil,
         locations: [URL] = [],
-        style: Style = .popUp,
         label: Label = .name,
         recents: Recents? = nil,
         suggestedSaveFilename: String? = nil,
@@ -91,7 +79,6 @@ struct FileSelection: View {
         self.canCreateDirectories = canCreateDirectories
         self.defaultDirectory = defaultDirectory
         self.locations = locations
-        self.style = style
         self.label = label
         self.recents = recents
         self.suggestedSaveFilename = suggestedSaveFilename
@@ -214,7 +201,7 @@ struct FileSelection: View {
         }
     }
 
-    private var popUp: some View {
+    var body: some View {
         FormPicker(
             placeholder: placeholder,
             options: options,
@@ -224,58 +211,17 @@ struct FileSelection: View {
             title: title(for:),
             icon: \.icon
         )
-    }
-
-    private var path: Binding<String> {
-        Binding {
-            fileURL.wrappedValue?.path ?? ""
-        } set: { typed in
-            let typed = typed.trimmingCharacters(in: .whitespacesAndNewlines)
-
-            fileURL.wrappedValue =
-                typed.isEmpty ? nil : URL(filePath: expanding(typed))
-            onSelection?()
-        }
-    }
-
-    /// A leading `~` means the person's home, which is not what
-    /// `expandingTildeInPath` resolves to from inside the sandbox.
-    private func expanding(_ path: String) -> String {
-        guard path == "~" || path.hasPrefix("~/") else { return path }
-
-        return Self.userHomeDirectory.path + path.dropFirst()
-    }
-
-    private var field: some View {
-        FormField(
-            placeholder: placeholder,
-            value: path,
-            actionIcon: "folder",
-            actionTitle: "Choose",
-            action: selectFile
-        )
-    }
-
-    var body: some View {
-        Group {
-            switch style {
-            case .popUp:
-                popUp
-            case .field:
-                field
-            }
-        }
         .onChange(of: isPresented?.wrappedValue ?? false) { _, isPresented in
             guard isPresented else { return }
             selectFile()
             self.isPresented?.wrappedValue = false
         }
         .task {
-            guard style == .popUp, let recents else { return }
+            guard let recents else { return }
             recentURLs = RecentLocations.urls(for: recents)
         }
         .task(id: options.first) {
-            guard style == .popUp, isEnabled, fileURL.wrappedValue == nil,
+            guard isEnabled, fileURL.wrappedValue == nil,
                 let first = options.first?.url
             else { return }
 

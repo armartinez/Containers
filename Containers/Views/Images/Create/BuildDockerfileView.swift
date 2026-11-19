@@ -24,9 +24,10 @@ struct BuildDockerfileView: View {
     var body: some View {
         FormStack {
             FormRow(title: "Dockerfile") {
-                FileSelection(
-                    placeholder: "No Dockerfile selected",
-                    fileURL: $dockerFile,
+                PathControl(
+                    url: $dockerFile,
+                    style: .popUp,
+                    placeholder: "None",
                     allowedContentTypes: [.item],
                     defaultDirectory: defaultFileDialogDirectory,
                     onSelection: { error = nil }
@@ -41,13 +42,12 @@ struct BuildDockerfileView: View {
             }
 
             FormRow(title: "Build directory") {
-                FileSelection(
-                    placeholder: (dockerFileDirectory ?? FileSelection.userHomeDirectory).path(percentEncoded: false),
-                    fileURL: $contextDirectory,
-                    canChooseDirectories: true,
-                    canCreateDirectories: true,
+                PathControl(
+                    url: $contextDirectory,
+                    style: .popUp,
+                    placeholder: "None",
+                    choosesDirectories: true,
                     defaultDirectory: dockerFileDirectory ?? defaultFileDialogDirectory,
-                    style: .field,
                     onSelection: { error = nil }
                 )
             }

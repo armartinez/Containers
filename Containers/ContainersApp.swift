@@ -87,7 +87,6 @@ struct ContainersApp: App {
         )
         .defaultSize(width: 800, height: 520)
         .defaultPosition(.center)
-        .windowResizability(.contentSize)
         // Links into the app are the dashboard's to open.
         .handlesExternalEvents(matching: ["\(AppLink.scheme)://"])
 
@@ -112,6 +111,7 @@ struct ContainersApp: App {
         }
         .defaultSize(width: 600, height: 400)
         .defaultPosition(.center)
+        .windowResizability(.contentMinSize)
         .handlesExternalEvents(matching: [])
         .commands { PreferencesCommands() }
 

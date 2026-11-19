@@ -58,7 +58,7 @@ struct WhatsNewView: View {
 
     private func featureRow(_ feature: AppInfo.Feature) -> some View {
         HStack(alignment: .top, spacing: 16) {
-            Image(systemName: feature.icon)
+            Image(feature.icon)
                 .font(.system(size: 28))
                 .foregroundStyle(foregroundColor)
                 .frame(width: 36)

@@ -5,6 +5,7 @@
 //  Created by Axel Martinez on 2026/10/31.
 //
 
+import ContainerizationExtras
 import ContainersCore
 import SwiftUI
 
@@ -23,6 +24,15 @@ struct CreateNetworkView: View {
 
     private var trimmedName: String {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var trimmedSubnet: String {
+        subnet.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Parsed the way the network is created with; empty asks for one picked automatically.
+    private var isValidSubnet: Bool {
+        trimmedSubnet.isEmpty || (try? CIDRv4(trimmedSubnet)) != nil
     }
 
     var body: some View {
@@ -83,19 +93,21 @@ struct CreateNetworkView: View {
                     Text("Create")
                         .frame(minWidth: .sheetButtonLabelWidth)
                 }
-                .defaultAction(enabled: !isCreating && NetworkConfiguration.isValidName(trimmedName))
+                .defaultAction(enabled: !isCreating && NetworkConfiguration.isValidName(trimmedName) && isValidSubnet)
             }
         )
     }
 
     private func create() {
-        let subnet = subnet.trimmingCharacters(in: .whitespacesAndNewlines)
-
         isCreating = true
 
         Task {
             do {
-                try await networkManager.createNetwork(name: trimmedName, mode: mode, subnet: subnet.isEmpty ? nil : subnet)
+                try await networkManager.createNetwork(
+                    name: trimmedName,
+                    mode: mode,
+                    subnet: trimmedSubnet.isEmpty ? nil : trimmedSubnet
+                )
                 onCreate()
                 dismiss()
             } catch {

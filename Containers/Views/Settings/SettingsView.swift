@@ -27,14 +27,14 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationSplitView {
-            List(SettingsPane.allCases, selection: $selectedSection) {
-                section in
+            List(SettingsPane.allCases, selection: $selectedSection) { section in
                 NavigationLink(value: section) {
                     SidebarRow(section: section)
                 }
             }
             .listStyle(.sidebar)
-            .navigationSplitViewColumnWidth(min: 230, ideal: 230, max: 230)
+            .navigationSplitViewColumnWidth(196)
+            .fixedSidebarWidth(196)
             .toolbar(removing: .sidebarToggle)
         } detail: {
             content
@@ -57,7 +57,7 @@ struct SettingsView: View {
                 .disabled(!canNavigateForward)
             }
         }
-        .frame(width: 760, height: 540)
+        .frame(minWidth: 760, minHeight: 540)
         .background(Color(nsColor: .windowBackgroundColor))
         .onChange(of: selectedSection) { oldValue, newValue in
             guard let newValue, newValue != oldValue else {
@@ -76,10 +76,14 @@ struct SettingsView: View {
                     GeneralSettingsView()
                 case .network:
                     NetworkSettingsView()
+                case .system:
+                    SystemSettingsView()
                 }
             }
             .frame(maxWidth: 520, alignment: .topLeading)
             .padding(24)
+            // The toolbar's scroll edge spans the scroll view's content, so the content spans the whole pane.
+            .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
@@ -142,6 +146,7 @@ private struct SidebarRow: View {
 private enum SettingsPane: String, CaseIterable, Identifiable {
     case general
     case network
+    case system
 
     var id: Self { self }
 
@@ -149,6 +154,7 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
         switch self {
         case .general: "General"
         case .network: "Network"
+        case .system: "Container System"
         }
     }
 
@@ -156,6 +162,7 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
         switch self {
         case .general: "gearshape.fill"
         case .network: "network"
+        case .system: "gauge.range.33to100.dotted.with.needle"
         }
     }
 }

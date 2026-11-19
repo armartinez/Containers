@@ -12,9 +12,7 @@ import Logging
 
 /// A service that keeps the volumes containers mount.
 protocol VolumeService: Sendable {
-    // Requirements so that both variants share the reads in the extension below, written once. A
-    // requirement can't be private, so the rest of the module sees them too: go through the service's
-    // methods instead.
+    // For the reads the variants share in the extension below. Use the service's methods instead.
     var volumesRoot: URL { get }
     var log: Logger { get }
 

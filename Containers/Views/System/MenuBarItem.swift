@@ -15,36 +15,40 @@ struct MenuBarItem: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        StatusButton(status: containerSystem.status)
+        Group {
+            StatusButton(status: containerSystem.status)
 
-        Divider()
+            Divider()
 
-        MenuButton(
-            title: "Dashboard",
-            icon: "square.grid.2x2",
-            keyEquivalent: "d"
-        ) {
-            NSApplication.shared.activate(ignoringOtherApps: true)
-            openWindow(id: ContainersApp.dashboardWindowID)
+            MenuButton(
+                title: "Dashboard",
+                icon: "square.grid.2x2",
+                keyEquivalent: "d"
+            ) {
+                NSApplication.shared.activate(ignoringOtherApps: true)
+                openWindow(id: ContainersApp.dashboardWindowID)
+            }
+
+            MenuButton(
+                title: "Settings",
+                icon: "gearshape",
+                keyEquivalent: ","
+            ) {
+                NSApplication.shared.activate(ignoringOtherApps: true)
+                openWindow(id: ContainersApp.settingsWindowID)
+            }
+
+            Divider()
+
+            button(for: .toggle)
+            button(for: .reload)
+
+            Divider()
+
+            button(for: .quit, keyEquivalent: "q")
         }
-
-        MenuButton(
-            title: "Settings",
-            icon: "gearshape",
-            keyEquivalent: ","
-        ) {
-            NSApplication.shared.activate(ignoringOtherApps: true)
-            openWindow(id: ContainersApp.settingsWindowID)
-        }
-
-        Divider()
-
-        button(for: .toggle)
-        button(for: .reload)
-
-        Divider()
-
-        button(for: .quit, keyEquivalent: "q")
+        // A menu shows a label's icon only when asked to; macOS 27 hides it otherwise.
+        .labelStyle(.titleAndIcon)
     }
 
     private func button(
@@ -55,7 +59,6 @@ struct MenuBarItem: View {
             title: systemActions.title(for: action),
             icon: systemActions.symbol(for: action),
             keyEquivalent: keyEquivalent,
-            isLoading: systemActions.working == action && action != .quit,
             isDisabled: !systemActions.isEnabled(action)
         ) {
             Task {
@@ -130,58 +133,19 @@ private struct StatusButton: View {
 
 // MARK: - Menu Button Component
 
+/// A native menu item: its icon from the label, its shortcut drawn by AppKit.
 private struct MenuButton: View {
     let title: String
     let icon: String
     var keyEquivalent: String? = nil
-    var isLoading: Bool = false
     var isDisabled: Bool = false
     let action: () -> Void
 
-    @State private var isHovered: Bool = false
-
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 12))
-                    .frame(width: 14)
-                    .foregroundStyle(isDisabled ? .tertiary : .secondary)
-
-                Text(title)
-                    .font(.system(size: 13))
-                    .foregroundStyle(
-                        isHovered && !isDisabled ? .white : .primary
-                    )
-
-                Spacer()
-
-                if isLoading {
-                    ProgressView()
-                        .controlSize(.small)
-                } else if let keyEquivalent {
-                    Text("⌘\(keyEquivalent)")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            .contentShape(Rectangle())
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(
-                        isHovered && !isDisabled
-                            ? Color.accentColor.opacity(0.15) : .clear
-                    )
-            )
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
+            Label(title, systemImage: icon)
         }
-        .buttonStyle(.plain)
+        .keyboardShortcut(keyEquivalent.flatMap(\.first).map { KeyboardShortcut(KeyEquivalent($0)) })
         .disabled(isDisabled)
-        .onHover { hovering in
-            isHovered = hovering
-        }
     }
 }

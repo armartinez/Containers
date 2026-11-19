@@ -44,6 +44,17 @@ extension ContainerSystem.Status {
         }
     }
 
+    /// The share of the gauge the needle points to, matching `symbol`; `nil` where the symbol isn't a gauge.
+    var gaugeLevel: Double? {
+        switch self {
+        case .running: 1
+        case .readOnly: nil
+        case .starting: 0.33
+        case .stopping: 0.67
+        case .notStarted, .failed: 0
+        }
+    }
+
     /// Darkened in light mode, where the system green reads faintly as text.
     private static let runningGreen = NSColor(name: nil) { appearance in
         let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua

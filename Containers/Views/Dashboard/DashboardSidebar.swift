@@ -43,13 +43,13 @@ struct DashboardSidebar: View {
                     .foregroundStyle(.tertiary)
             }
         } icon: {
-            // Console's icon size; `imageScale` is ignored in a sidebar.
-            if isEnabled {
-                Image(systemName: tab.icon)
-                    .font(.system(size: iconSize))
+            if #available(macOS 27, *), isEnabled, tab == .reports {
+                icon(for: tab)
+                    .rowTint(.secondary)
+            } else if isEnabled {
+                icon(for: tab)
             } else {
-                Image(systemName: tab.icon)
-                    .font(.system(size: iconSize))
+                icon(for: tab)
                     .foregroundStyle(.tertiary)
             }
         }
@@ -58,6 +58,18 @@ struct DashboardSidebar: View {
         .tag(tab)
         .selectionDisabled(!isEnabled)
         .disabled(!isEnabled)
+    }
+
+    /// macOS 27 sizes a sidebar's icons itself.
+    @ViewBuilder
+    private func icon(for tab: NavigationTab) -> some View {
+        if #available(macOS 27, *) {
+            Image(tab.icon)
+        } else {
+            // Console's icon size; `imageScale` is ignored in a sidebar.
+            Image(tab.icon)
+                .font(.system(size: iconSize))
+        }
     }
 
     private func isAvailable(_ tab: NavigationTab) -> Bool {
